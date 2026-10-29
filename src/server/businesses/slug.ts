@@ -7,19 +7,18 @@ export const RESERVED_SLUGS = new Set([
   'eliminacion-datos', 'panel-g9k2x', 'admin', 'api', 'auth', 'social', 'uploads', 'health', 'negocios',
 ]);
 
-// Formato permitido para la URL del negocio: 3 a 60 caracteres, minúsculas, números y guiones.
-export const BUSINESS_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,58}[a-z0-9])$/;
+// URL del negocio: solo minúsculas y números, sin guiones ni guiones bajos. De 3 a 20 caracteres.
+export const BUSINESS_SLUG_MAX = 20;
+export const BUSINESS_SLUG_PATTERN = /^[a-z0-9]{3,20}$/;
 
-// Normaliza un nombre a slug: sin acentos, minúsculas, solo [a-z0-9-], máximo 60 caracteres.
+// Normaliza un nombre a slug: sin acentos, minúsculas, solo letras y números, máximo 20 caracteres.
 export function slugify(text: string): string {
   return text
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 60)
-    .replace(/-+$/g, '');
+    .replace(/[^a-z0-9]/g, '')
+    .slice(0, BUSINESS_SLUG_MAX);
 }
 
 type Db = typeof prismaClient;
@@ -32,7 +31,7 @@ export async function slugProblem(
   ownerId?: string,
 ): Promise<{ message: string; conflict: boolean } | null> {
   if (!BUSINESS_SLUG_PATTERN.test(slug)) {
-    return { message: 'La URL solo puede tener letras minúsculas, números y guiones (3 a 60 caracteres)', conflict: false };
+    return { message: 'La URL solo puede tener letras minúsculas y números (3 a 20 caracteres)', conflict: false };
   }
   if (RESERVED_SLUGS.has(slug)) return { message: 'Esa URL está reservada', conflict: false };
   const categories = await db.category.findMany({ select: { name: true } });

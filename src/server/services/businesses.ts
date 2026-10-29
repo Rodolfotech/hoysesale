@@ -2,8 +2,10 @@ import { randomUUID } from 'crypto';
 import { Prisma } from '@/generated/prisma/client';
 import { prisma } from '../db';
 import { badRequest, conflict, notFound } from '../http';
-import { slugify, slugProblem } from '../businesses/slug';
-import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES, getMediaStorage } from '../storage';
+import { BUSINESS_SLUG_MAX, slugify, slugProblem } from '../businesses/slug';
+import { ALLOWED_IMAGE_TYPES, getMediaStorage } from '../storage';
+import { COVER_MAX_BYTES, COVER_SIZE, LOGO_MAX_BYTES, MAX_IMAGE_BYTES } from '@/lib/media-limits';
+import imageSize from 'image-size';
 import type { z } from 'zod';
 import type { Business } from '@/lib/business';
 import type { BusinessItemSchema, BusinessPageSchema, BusinessReviewSchema } from '../validation';
@@ -112,6 +114,8 @@ export async function createBusinessPage(userId: string, dto: BusinessPage) {
   if (current.slug) throw conflict('Ya tienes una página creada');
 
   const { slug: rawSlug, ...fields } = dto;
+  if (!fields.name) throw badRequest('El nombre del negocio es obligatorio');
+  if (!fields.companyAddress) throw badRequest('La dirección es obligatoria');
   const slug = (rawSlug ?? slugify(fields.name ?? current.name)).trim().toLowerCase();
   await assertSlugAvailable(slug, userId);
 
@@ -122,10 +126,14 @@ export async function createBusinessPage(userId: string, dto: BusinessPage) {
 export async function updateOwnBusiness(userId: string, dto: BusinessPage) {
   const { slug: rawSlug, ...fields } = dto;
   const data = userData(fields);
+  // Un slug que no cambia no se revalida: así un negocio con una URL antigua puede seguir editando otros campos.
   if (rawSlug !== undefined) {
     const slug = rawSlug.trim().toLowerCase();
-    await assertSlugAvailable(slug, userId);
-    data.slug = slug;
+    const current = await prisma.user.findUnique({ where: { id: userId }, select: { slug: true } });
+    if (slug !== current?.slug) {
+      await assertSlugAvailable(slug, userId);
+      data.slug = slug;
+    }
   }
   return prisma.user.update({ where: { id: userId }, data, select: PUBLIC_BUSINESS_SELECT });
 }
@@ -139,7 +147,17 @@ async function assertSlugAvailable(slug: string, ownerId: string) {
 export async function uploadBusinessImage(userId: string, kind: 'logo' | 'cover', file: File) {
   const ext = ALLOWED_IMAGE_TYPES[file.type];
   if (!ext) throw badRequest('Formato no permitido (usa jpeg, png o webp)');
-  if (file.size > MAX_IMAGE_BYTES) throw badRequest('La imagen supera el máximo de 4 MB');
+  if (file.type !== 'image/webp') throw badRequest('La imagen debe ser WEBP');
+  if (kind === 'cover' && file.size > COVER_MAX_BYTES) throw badRequest('La portada es muy pesada. Tamaño máximo 90 KB');
+  if (kind === 'cover') {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const size = imageSize(buffer);
+    if (size.width !== COVER_SIZE.width || size.height !== COVER_SIZE.height) {
+      throw badRequest(`La portada debe medir ${COVER_SIZE.width} × ${COVER_SIZE.height} px`);
+    }
+  }
+  if (kind === 'logo' && file.size > LOGO_MAX_BYTES) throw badRequest('El logo es muy pesado. Tamaño máximo 10 KB');
+  if (file.size > MAX_IMAGE_BYTES) throw badRequest('La imagen es muy pesada. Tamaño máximo 4 MB');
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const url = await getMediaStorage().upload(`${userId}/business/${kind}-${randomUUID()}.${ext}`, buffer, file.type);
@@ -256,4 +274,28 @@ function itemData(type: BusinessItemType, dto: BusinessItem, partial: boolean): 
 export async function getBusinessPage(slug: string): Promise<Business | null> {
   const business = await getPublicBusiness(slug);
   return business ? (JSON.parse(JSON.stringify(business)) as Business) : null;
+}
+
+// Disponibilidad de una URL. Si ya está en uso, sugiere la primera variante con número libre (rodolfoparada2).
+export async function checkBusinessSlug(
+  slug: string,
+  ownerId?: string,
+): Promise<{ available: boolean; message?: string; suggestion?: string }> {
+  const clean = slug.trim().toLowerCase();
+  const problem = await slugProblem(prisma, clean, ownerId);
+  if (!problem) return { available: true };
+  return {
+    available: false,
+    message: problem.message,
+    suggestion: problem.conflict ? await suggestSlug(clean, ownerId) : undefined,
+  };
+}
+
+async function suggestSlug(base: string, ownerId?: string): Promise<string | undefined> {
+  for (let n = 2; n < 1000; n++) {
+    const digits = String(n);
+    const candidate = `${base.slice(0, BUSINESS_SLUG_MAX - digits.length)}${digits}`;
+    if (!(await slugProblem(prisma, candidate, ownerId))) return candidate;
+  }
+  return undefined;
 }

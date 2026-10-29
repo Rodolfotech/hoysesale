@@ -118,6 +118,8 @@ export const adminApi = {
 
 // Micro-sitio del negocio (edición del propio negocio)
 export const businessApi = {
+  checkSlug: (slug: string) =>
+    api.get<{ available: boolean; message?: string; suggestion?: string }>('/businesses/check-slug', { params: { slug } }),
   addItem: (type: 'products' | 'services' | 'highlights', data: object) => api.post(`/businesses/me/${type}`, data),
   updateItem: (type: 'products' | 'services' | 'highlights', id: string, data: object) => api.put(`/businesses/me/${type}/${id}`, data),
   deleteItem: (type: 'products' | 'services' | 'highlights', id: string) => api.delete(`/businesses/me/${type}/${id}`),

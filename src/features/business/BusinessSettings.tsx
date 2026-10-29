@@ -1,5 +1,6 @@
 'use client';
 
+import { PhoneInput, phoneDigitsFrom } from '@/components/ui/PhoneInput';
 import { useState } from 'react';
 import { businessApi } from '../../api';
 import { BUSINESS_CATEGORIES, BUSINESS_AMENITIES, AMENITY_LABELS } from '../../constants/business';
@@ -22,7 +23,7 @@ export function BusinessSettings({ slug, initial, onSaved }: BusinessSettingsPro
   const [category, setCategory] = useState(initial.category ?? '');
   const [description, setDescription] = useState(initial.businessDescription ?? '');
   const [amenities, setAmenities] = useState<string[]>(initial.amenities ?? []);
-  const [whatsapp, setWhatsapp] = useState(initial.whatsappReservations ?? '');
+  const [whatsapp, setWhatsapp] = useState(phoneDigitsFrom(initial.whatsappReservations));
   const [mapUrl, setMapUrl] = useState(initial.mapUrl ?? '');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -39,7 +40,7 @@ export function BusinessSettings({ slug, initial, onSaved }: BusinessSettingsPro
         category: category || undefined,
         businessDescription: description,
         amenities,
-        whatsappReservations: whatsapp || undefined,
+        whatsappReservations: whatsapp ? `+569${whatsapp}` : undefined,
         mapUrl: mapUrl || undefined,
       });
       setMessage('Micro-sitio guardado');
@@ -104,10 +105,7 @@ export function BusinessSettings({ slug, initial, onSaved }: BusinessSettingsPro
         </div>
       </div>
 
-      <div>
-        <label className="block text-xs mb-1" style={{ color: '#1D1D1F99' }}>WhatsApp para reservas (+569XXXXXXXX)</label>
-        <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="+56912345678" className="w-full px-3 py-2 rounded-xl text-sm light-form" />
-      </div>
+      <PhoneInput label="WhatsApp para reservas" value={whatsapp} onChange={setWhatsapp} />
 
       <div>
         <label className="block text-xs mb-1" style={{ color: '#1D1D1F99' }}>Enlace de mapa (Google Maps, opcional)</label>
