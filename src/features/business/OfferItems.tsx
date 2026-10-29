@@ -1,23 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { apiErrorMessage } from '@/lib/api-error';
 import { businessApi } from '../../api';
 import { FormInput } from '../../components/ui/FormInput';
-import type { BusinessProduct, BusinessService } from '@/lib/business';
+import type { OfferItem } from './offer';
 
-export interface OfferItem {
-  id: string;
-  name: string;
-  description: string | null;
-  price?: number | null;
-}
-
-// Productos y servicios del micro-sitio tal como los usa el formulario.
-export const productsToOffer = (products: BusinessProduct[]): OfferItem[] =>
-  products.map((p) => ({ id: p.id, name: p.name, description: p.description, price: p.price }));
-
-export const servicesToOffer = (services: BusinessService[]): OfferItem[] =>
-  services.map((s) => ({ id: s.id, name: s.title, description: s.description }));
+export type { OfferItem } from './offer';
 
 interface OfferItemsProps {
   type: 'products' | 'services';
@@ -51,9 +40,8 @@ export function OfferItems({ type, title, items, onChange }: OfferItemsProps) {
       setName('');
       setDescription('');
       setPrice('');
-    } catch (err: any) {
-      const msg = err?.response?.data?.message;
-      setError(Array.isArray(msg) ? msg.join(', ') : msg || 'No se pudo guardar');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'No se pudo guardar'));
     } finally {
       setBusy(false);
     }

@@ -2,6 +2,7 @@
 
 import { usePersistentState } from '@/hooks/usePersistentState';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { PhoneInput, phoneDigitsFrom } from '@/components/ui/PhoneInput';
 import { BusinessHours } from './BusinessHours';
 import { OfferItems, type OfferItem } from './OfferItems';
@@ -11,6 +12,7 @@ import { WebsiteInput, websiteError, websiteRestFrom, websiteValueFrom } from '@
 import { InstagramInput, instagramHandleFrom, instagramValueFrom } from '@/components/ui/InstagramInput';
 import { FormInput } from '../../components/ui/FormInput';
 import { ImagePicker } from '../media/ImagePicker';
+import { apiErrorMessage } from '@/lib/api-error';
 import { businessApi } from '../../api';
 import { COMUNAS } from '../../constants/comunas';
 import { BUSINESS_CATEGORIES, BUSINESS_AMENITIES, AMENITY_LABELS } from '../../constants/business';
@@ -91,17 +93,18 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
   const [slug, setSlug] = usePersistentState(`${draftKey}:slug`, initial.slug ?? '');
   // La URL sigue al nombre hasta que el usuario la edita; en un negocio existente no cambia sola.
   const [slugTouched, setSlugTouched] = useState(mode === 'edit');
-  const [slugStatus, setSlugStatus] = useState<{ available: boolean | null; message?: string; suggestion?: string }>({ available: null });
+  // Resultado de la última revisión de URL. Solo se usa si corresponde a la URL actual.
+  const [slugResult, setSlugResult] = useState<{ slug: string; available: boolean; message?: string; suggestion?: string } | null>(null);
+  const slugStatus: { available: boolean | null; message?: string; suggestion?: string } = slugResult && slugResult.slug === slug ? slugResult : { available: null };
 
   // Revisa la URL 400 ms después de la última tecla.
   useEffect(() => {
-    setSlugStatus({ available: null });
     if (!slug) return;
     let cancelled = false;
     const timer = setTimeout(() => {
       businessApi.checkSlug(slug)
-        .then(({ data }) => { if (!cancelled) setSlugStatus(data); })
-        .catch(() => { if (!cancelled) setSlugStatus({ available: null }); });
+        .then(({ data }) => { if (!cancelled) setSlugResult({ ...data, slug }); })
+        .catch(() => undefined);
     }, 400);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [slug]);
@@ -143,9 +146,8 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
         },
       );
       clearAll();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message;
-      setError(Array.isArray(msg) ? msg.join(', ') : msg || 'No se pudo guardar');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'No se pudo guardar'));
     } finally {
       setSaving(false);
     }
@@ -230,7 +232,7 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
       <div className="space-y-3">
         <p className="text-sm font-semibold" style={{ color: '#1D1D1F' }}>Eventos</p>
         <p className="text-sm" style={{ color: '#1D1D1F99' }}>Tus eventos aparecen automáticamente en la página del negocio. Para publicar uno nuevo, créalo desde la sección de eventos.</p>
-        <a href="/create-event" className="inline-block text-sm font-medium underline" style={{ color: '#2563EB' }}>Crear evento</a>
+        <Link href="/create-event" className="inline-block text-sm font-medium underline" style={{ color: '#2563EB' }}>Crear evento</Link>
       </div>
 
       <div>

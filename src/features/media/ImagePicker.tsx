@@ -1,5 +1,6 @@
 'use client';
 
+import { apiErrorMessage } from '@/lib/api-error';
 import { useId, useState, type ReactNode } from 'react';
 import { Upload } from 'lucide-react';
 import { MEDIA_ACCEPTED_TYPES, MEDIA_MAX_BYTES } from './MediaUploader';
@@ -67,9 +68,8 @@ export function ImagePicker({ label, value, onUpload, onChange, aspect = 'square
     setUploading(true);
     try {
       onChange(await onUpload(file));
-    } catch (err: any) {
-      const msg = err?.response?.data?.message;
-      setError(Array.isArray(msg) ? msg.join(', ') : msg || 'No se pudo subir la imagen');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'No se pudo subir la imagen'));
     } finally {
       setUploading(false);
     }
