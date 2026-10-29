@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { businessApi } from '../../api';
 import type { User } from '../../types';
 import { Modal } from '../../components/ui/Modal';
-import { BusinessForm, type BusinessFormPayload } from './BusinessForm';
+import { BusinessForm, slugifyName, type BusinessFormPayload } from './BusinessForm';
 
 interface CreateBusinessPageProps {
   user: User;
@@ -35,7 +35,11 @@ export function CreateBusinessPage({ user, onUpdated }: CreateBusinessPageProps)
         </div>
         <BusinessForm
           mode="create"
-          initial={{ name: '', comuna: user.comuna, slug: '' }}
+          initial={{
+            slug: slugifyName(user.name ?? ''),
+            companyPhone: user.companyPhone,
+            whatsappReservations: user.whatsappReservations,
+          }}
           submitLabel="Crear"
           onSubmit={create}
         />

@@ -21,6 +21,9 @@ import {
   Search,
 } from 'lucide-react';
 import { COMUNAS } from '../constants/comunas';
+import { splitAddress } from '../features/business/BusinessForm';
+import { BUSINESS_CATEGORIES } from '../constants/business';
+import { InstagramInput, instagramHandleFrom, instagramValueFrom } from '../components/ui/InstagramInput';
 import type { SocialPost } from '../types';
 
 const CIUDADES = ['Villarrica', 'Pucón', 'Temuco', 'Loncoche', 'Freire', 'Cunco', 'Curarrehue', 'Lautaro', 'Pitrufquén', 'Gorbea'] as const;
@@ -40,13 +43,15 @@ export default function Profile() {
 
   const [form, setForm] = useState({
     name: '',
-    companyInstagram: '',
+    companyInstagram: '', // solo el usuario, sin @
     website: '',
     companyRut: '',
     companyGiro: '',
     companyPhone: '',
     email: '',
-    companyAddress: '',
+    companyStreet: '',
+    companyNumber: '',
+    category: '',
     city: '',
     comuna: '',
     adminFirstName: '',
@@ -59,13 +64,15 @@ export default function Profile() {
     if (user) {
       setForm({
         name: user.name || '',
-        companyInstagram: user.companyInstagram || '',
+        companyInstagram: instagramHandleFrom(user.companyInstagram),
         website: user.website || '',
         companyRut: user.companyRut || '',
         companyGiro: user.companyGiro || '',
         companyPhone: user.companyPhone || '',
         email: user.email || '',
-        companyAddress: user.companyAddress || '',
+        companyStreet: splitAddress(user.companyAddress)[0],
+        companyNumber: splitAddress(user.companyAddress)[1],
+        category: user.category || '',
         city: user.city || '',
         comuna: user.comuna || '',
         adminFirstName: user.adminFirstName || '',
@@ -122,8 +129,9 @@ export default function Profile() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { email: _email, ...data } = form;
-      await usersApi.updateProfile(data);
+      const { email: _email, companyStreet, companyNumber, category, companyInstagram, ...data } = form;
+      // La dirección se guarda como un solo texto: "Calle 123".
+      await usersApi.updateProfile({ ...data, companyInstagram: instagramValueFrom(companyInstagram) ?? null, category: category || null, companyAddress: [companyStreet.trim(), companyNumber].filter(Boolean).join(' ') || null });
       setEditing(false);
       setToast({ message: 'Datos actualizados correctamente', type: 'success' });
     } catch {
@@ -218,13 +226,19 @@ export default function Profile() {
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
             <ProfileField label="Nombre de empresa organizadora" value={form.name} editing={editing} onChange={set('name')} placeholder="Ingrese nombre de empresa" required />
-            <ProfileField label="Instagram empresa organizadora" value={form.companyInstagram} editing={editing} onChange={set('companyInstagram')} placeholder="Ingrese cuenta de instagram" required />
+            {editing ? (
+              <InstagramInput label="Instagram empresa organizadora" value={form.companyInstagram} onChange={set('companyInstagram')} />
+            ) : (
+              <ProfileField label="Instagram empresa organizadora" value={form.companyInstagram ? `@${form.companyInstagram}` : ''} editing={false} onChange={set('companyInstagram')} placeholder="Ingrese cuenta de instagram" required />
+            )}
             <ProfileField label="Sitio web" value={form.website} editing={editing} onChange={set('website')} placeholder="Ingrese sitio web" />
             <ProfileField label="Rut de empresa" value={form.companyRut} editing={editing} onChange={set('companyRut')} placeholder="Ingrese RUT de empresa" />
             <ProfileField label="Giro de empresa" value={form.companyGiro} editing={editing} onChange={set('companyGiro')} placeholder="Ingrese giro comercial de empresa" />
             <ProfileField label="Teléfono empresa" value={form.companyPhone} editing={editing} onChange={set('companyPhone')} placeholder="Ingrese RUT de empresa" type="tel" required />
             <ProfileField label="Correo electrónico empresa" value={form.email} editing={editing} onChange={set('email')} placeholder="Ingrese correo electrónico de empresa" type="email" required disabled />
-            <ProfileField label="Dirección de empresa" value={form.companyAddress} editing={editing} onChange={set('companyAddress')} placeholder="Ingrese dirección de empresa" />
+            <ProfileField label="Calle" value={form.companyStreet} editing={editing} onChange={(v) => setForm(prev => ({ ...prev, companyStreet: v.slice(0, 50) }))} placeholder="Nombre de la calle" />
+            <ProfileField label="Número" value={form.companyNumber} editing={editing} onChange={(v) => setForm(prev => ({ ...prev, companyNumber: v.replace(/\D/g, '').slice(0, 6) }))} placeholder="Número" />
+            <ProfileField label="Categoría" value={form.category} editing={editing} onChange={set('category')} placeholder="Seleccione categoría" type="select" options={BUSINESS_CATEGORIES} />
             <ProfileField label="Ciudad" value={form.city} editing={editing} onChange={set('city')} placeholder="Seleccione Ciudad" type="select" options={CIUDADES} required />
             <ProfileField label="Comuna" value={form.comuna} editing={editing} onChange={set('comuna')} placeholder="Seleccione Comuna" type="select" options={COMUNAS} required />
           </div>

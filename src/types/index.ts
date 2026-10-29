@@ -28,12 +28,12 @@ export interface User {
   instagramClickCount?: number;
   ownedEvents?: Array<{ id: string; title: string; slug: string; date: string; city?: string }>;
   registrations?: Array<{ id: string; event: { id: string; title: string; slug: string; date: string }; createdAt: string }>;
-  companyInstagram?: string;
+  companyInstagram?: string | null;
   website?: string;
   companyRut?: string;
   companyGiro?: string;
   companyPhone?: string;
-  companyAddress?: string;
+  companyAddress?: string | null;
   city?: string;
   adminFirstName?: string;
   adminLastName?: string;
