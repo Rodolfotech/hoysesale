@@ -331,15 +331,8 @@ export default function Profile() {
         {user && (
           <div className="mb-6">
             <BusinessSettings
-              slug={user.slug ?? null}
+              user={user}
               onSaved={(newSlug) => setUser({ ...user, slug: newSlug ?? user.slug })}
-              initial={{
-                category: user.category,
-                businessDescription: user.businessDescription,
-                amenities: user.amenities,
-                whatsappReservations: user.whatsappReservations,
-                mapUrl: user.mapUrl,
-              }}
             />
           </div>
         )}

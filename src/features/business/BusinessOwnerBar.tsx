@@ -18,7 +18,7 @@ interface BusinessOwnerBarProps {
   content: { products: BusinessProduct[]; services: BusinessService[]; highlights: BusinessHighlight[] };
 }
 
-// Barra del micro-sitio: "Compartir" y "Ver publicación" para todos; "Editar" y "Contenido" solo para el dueño.
+// Barra del micro-sitio: "Compartir" para todos; "Editar", "Contenido" y "Ver publicación" solo para el dueño.
 export function BusinessOwnerBar({ slug, pageUrl, initial, content }: BusinessOwnerBarProps) {
   const router = useRouter();
   const [isOwner, setIsOwner] = useState(false);
@@ -58,13 +58,13 @@ export function BusinessOwnerBar({ slug, pageUrl, initial, content }: BusinessOw
         <>
           <Button onClick={() => setOpen(true)}>Editar</Button>
           <Button variant="outline" onClick={() => setManage(true)}>Contenido</Button>
+          <Button variant="outline" href={pageUrl} target="_blank">
+            Ver publicación
+          </Button>
         </>
       )}
       <Button variant="outline" onClick={share}>
         {copied ? 'Enlace copiado' : 'Compartir página'}
-      </Button>
-      <Button variant="outline" href={pageUrl} target="_blank">
-        Ver publicación
       </Button>
 
       {isOwner && (

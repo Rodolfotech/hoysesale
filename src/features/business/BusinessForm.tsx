@@ -83,6 +83,8 @@ interface BusinessFormProps {
 }
 
 // Formulario del micro-sitio. Lo usan la creación y la edición (reutilizable, sin lógica de página).
+const TAB_LABELS = { info: 'Información del negocio', contact: 'Encuéntranos', hours: 'Horario', offer: 'Oferta', about: 'Nosotros', events: 'Eventos', image: 'Identidad' } as const;
+
 export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }: BusinessFormProps) {
   const draftKey = `draft:business:${mode}:${initial.slug ?? 'new'}`;
   const [slug, setSlug] = usePersistentState(`${draftKey}:slug`, initial.slug ?? '');
@@ -121,6 +123,7 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
   const [hours, setHours] = usePersistentState<Record<string, string>>(`${draftKey}:hours`, initial.hours ?? {});
   const [logoUrl, setLogoUrl] = usePersistentState<string | null>(`${draftKey}:logoUrl`, initial.logoUrl ?? null);
   const [coverUrl, setCoverUrl] = usePersistentState<string | null>(`${draftKey}:coverUrl`, initial.coverUrl ?? null);
+  const [tab, setTab] = useState<'info' | 'contact' | 'hours' | 'offer' | 'about' | 'events' | 'image'>('info');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -163,6 +166,24 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
 
   return (
     <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+      <div role="tablist" className="flex flex-wrap gap-x-2 gap-y-1" style={{ borderBottom: '1px solid #E4EBFA' }}>
+        {(['info', 'contact', 'hours', 'offer', 'about', 'events', 'image'] as const).map((key) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={tab === key}
+            onClick={() => setTab(key)}
+            className="px-4 py-2 text-sm font-medium cursor-pointer"
+            style={{ borderBottom: tab === key ? '2px solid #2563EB' : '2px solid transparent', marginBottom: '-1px', color: tab === key ? '#2563EB' : '#1D1D1F99' }}
+          >
+            {TAB_LABELS[key]}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'info' && (
+      <div className="space-y-5">
       <div>
         <p className={label} style={{ color: '#1D1D1F99' }}>Dirección de tu página</p>
         <div className="flex items-center gap-1 text-sm" style={{ color: '#1D1D1F99' }}>
@@ -204,6 +225,11 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
         </div>
       </div>
 
+      </div>
+      )}
+
+      {tab === 'contact' && (
+      <div className="space-y-5">
       <p className="block text-sm font-medium mb-1.5" style={{ color: '#1D1D1F', fontSize: '14px' }}>Dirección</p>
       <FormInput label="Calle" value={street} onChange={(e) => setStreet(e.target.value.slice(0, 50))} maxLength={50} required placeholder="Nombre de la calle" />
       <FormInput label="Número" value={number} onChange={(e) => setNumber(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" maxLength={6} placeholder="Número" />
@@ -228,12 +254,17 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
           <p className="text-xs mt-1" style={{ color: '#1D1D1F99' }}>Google Maps o Waze. Si lo dejas vacío, se usa la dirección exacta.</p>
         </div>
       </fieldset>
-
-      <div>
-        <label className={label} style={{ color: '#1D1D1F' }}>Descripción (2 a 4 párrafos; separa los párrafos con una línea en blanco)</label>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} maxLength={2000} className="w-full px-3 py-2 rounded-xl text-sm light-form resize-none" />
       </div>
+      )}
 
+      {tab === 'info' && (
+      <div className="space-y-5">
+
+      </div>
+      )}
+
+      {tab === 'offer' && (
+      <div className="space-y-5">
       <div>
         <p className={label} style={{ color: '#1D1D1F' }}>Comodidades</p>
         <div className="flex flex-wrap gap-2">
@@ -245,12 +276,47 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
           ))}
         </div>
       </div>
+      </div>
+      )}
 
+      {tab === 'about' && (
+      <div className="space-y-5">
+      <div>
+        <label className={label} style={{ color: '#1D1D1F' }}>Descripción (2 a 4 párrafos; separa los párrafos con una línea en blanco)</label>
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} maxLength={2000} className="w-full px-3 py-2 rounded-xl text-sm light-form resize-none" />
+      </div>
+      </div>
+      )}
+
+      {tab === 'info' && (
+      <div className="space-y-5">
+
+      </div>
+      )}
+
+      {tab === 'hours' && (
+      <div className="space-y-5">
       <div>
         <p className={label} style={{ color: '#1D1D1F' }}>Horarios</p>
         <BusinessHours hours={hours} onChange={setHours} />
       </div>
+      </div>
+      )}
 
+      {tab === 'info' && (
+      <div className="space-y-5">
+
+      </div>
+      )}
+
+      {tab === 'events' && (
+      <div className="space-y-3">
+        <p className="text-sm" style={{ color: '#1D1D1F99' }}>Tus eventos aparecen automáticamente en la página del negocio. Para publicar uno nuevo, créalo desde la sección de eventos.</p>
+        <a href="/create-event" className="inline-block text-sm font-medium underline" style={{ color: '#2563EB' }}>Crear evento</a>
+      </div>
+      )}
+
+      {tab === 'image' && (
       <div className="grid grid-cols-2 gap-4">
         <ImagePicker
           label="Logo"
@@ -269,6 +335,8 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
           info={<><p className="font-semibold mb-1">Medida y peso de la portada</p><p>Medida: <b>1200 × 400 px</b>.</p><p>Peso máximo: <b>90 KB</b>.</p><p>Formato: <b>WEBP</b>.</p></>}
         />
       </div>
+
+      )}
 
       <div className="flex flex-wrap items-center justify-end gap-3">
         {error && <p role="alert" className="text-sm mr-auto" style={{ color: '#DC2626' }}>{error}</p>}

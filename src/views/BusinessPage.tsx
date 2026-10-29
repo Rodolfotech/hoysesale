@@ -14,14 +14,6 @@ import { Stat } from '@/components/ui/Stat';
 import { AMENITY_LABELS, BUSINESS_AMENITIES, BUSINESS_DAYS } from '@/constants/business';
 import { SITE_URL, type Business } from '@/lib/business';
 
-const TABS = [
-  { id: 'productos', label: 'Productos' },
-  { id: 'servicios', label: 'Servicios' },
-  { id: 'eventos', label: 'Eventos' },
-  { id: 'nosotros', label: 'Nosotros' },
-  { id: 'resenas', label: 'Reseñas' },
-];
-
 export default function BusinessPage({ business }: { business: Business }) {
   const pageUrl = `${SITE_URL}/${business.slug}`;
   const address = [business.companyAddress, business.comuna].filter(Boolean).join(', ');
@@ -72,6 +64,108 @@ export default function BusinessPage({ business }: { business: Business }) {
     logoUrl: business.logoUrl,
     coverUrl: business.coverUrl,
   };
+
+  const panels = [
+    {
+      id: 'productos',
+      label: 'Productos',
+      content: (
+            <section aria-labelledby="productos-titulo">
+          <ProductsSection products={business.products} businessName={business.name} whatsapp={reservationsPhone} />
+            </section>      ),
+    },
+    {
+      id: 'servicios',
+      label: 'Servicios',
+      content: (
+            <section aria-labelledby="servicios-titulo">
+          <h2 id="servicios-titulo" className="text-2xl font-semibold mb-5">Servicios</h2>
+          {business.services.length === 0 ? (
+            <EmptyState>Aún no hay servicios publicados.</EmptyState>
+          ) : (
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {business.services.map((s, i) => {
+                const featured = i === 0;
+                return (
+                  <Card as="li" key={s.id} tone={featured ? 'accent' : 'default'} padding="sm" className="p-5 flex gap-4 items-start">
+                    <span
+                      aria-hidden="true"
+                      className={`w-11 h-11 shrink-0 rounded-full flex items-center justify-center text-lg ${featured ? 'bg-white/20' : 'bg-brand-neutral-2 text-brand-blue'}`}
+                    >
+                      ✦
+                    </span>
+                    <div>
+                      <p className="font-semibold">{s.title}</p>
+                      {s.description && <p className={`text-sm mt-1 ${featured ? 'opacity-85' : 'text-brand-dark/60'}`}>{s.description}</p>}
+                    </div>
+                  </Card>
+                );
+              })}
+            </ul>
+          )}
+            </section>      ),
+    },
+    {
+      id: 'eventos',
+      label: 'Eventos',
+      content: (
+            <section aria-labelledby="eventos-titulo">
+          <h2 id="eventos-titulo" className="text-2xl font-semibold mb-5">Próximos eventos</h2>
+          <EventsCountdown events={business.events} businessName={business.name} whatsapp={reservationsPhone} />
+            </section>      ),
+    },
+    {
+      id: 'nosotros',
+      label: 'Nosotros',
+      content: (
+            <section aria-labelledby="nosotros-titulo">
+          <h2 id="nosotros-titulo" className="text-2xl font-semibold mb-5">Nosotros</h2>
+          <Card className="space-y-4">
+            {paragraphs.map((p, i) => (
+              <p key={i} className="text-base leading-relaxed">{p}</p>
+            ))}
+            {amenities.length > 0 && (
+              <ul className="flex flex-wrap gap-2 pt-2" aria-label="Comodidades">
+                {amenities.map((a) => (
+                  <li key={a}><Badge tone="brand">{AMENITY_LABELS[a] ?? a}</Badge></li>
+                ))}
+              </ul>
+            )}
+          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
+            {business.hours && Object.keys(business.hours).length > 0 && (
+              <Card padding="sm" className="p-5">
+                <h3 className="font-semibold mb-3">Horarios</h3>
+                <ul className="space-y-1.5">
+                  {BUSINESS_DAYS.map((d) => (
+                    <li key={d} className="flex justify-between gap-4">
+                      <span className="capitalize text-brand-dark/60">{d}</span>
+                      <span>{hoursText(business.hours?.[d], d)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+            <Card padding="sm" className="p-5 space-y-2">
+              <h3 className="font-semibold mb-3">Contacto</h3>
+              {business.companyAddress && <p>{business.companyAddress}{business.comuna ? `, ${business.comuna}` : ''}</p>}
+              {business.companyPhone && <p>{business.companyPhone}</p>}
+              {instagram && <p><a href={instagram} target="_blank" rel="noopener noreferrer" className="underline text-brand-blue">Instagram</a></p>}
+              {business.website && <p><a href={business.website} target="_blank" rel="noopener noreferrer" className="underline text-brand-blue">Sitio web</a></p>}
+            </Card>
+          </div>
+            </section>      ),
+    },
+    {
+      id: 'resenas',
+      label: 'Reseñas',
+      content: (
+            <section aria-labelledby="resenas-titulo">
+          <h2 id="resenas-titulo" className="text-2xl font-semibold mb-5">Reseñas</h2>
+          <ReviewsSection slug={business.slug} reviews={business.reviews} rating={business.stats.rating} reviewCount={business.stats.reviewCount} />
+            </section>      ),
+    },
+  ];
 
   return (
     <main className="w-full pb-32 bg-brand-neutral-1 text-brand-dark">
@@ -132,90 +226,7 @@ export default function BusinessPage({ business }: { business: Business }) {
         )}
       </div>
 
-      <div className="mt-6">
-        <SectionTabs tabs={TABS} />
-      </div>
-
-      <div className="max-w-5xl mx-auto px-4 space-y-14 pt-10">
-        <section id="productos" aria-labelledby="productos-titulo" className="scroll-mt-28">
-          <ProductsSection products={business.products} businessName={business.name} whatsapp={reservationsPhone} />
-        </section>
-
-        <section id="servicios" aria-labelledby="servicios-titulo" className="scroll-mt-28">
-          <h2 id="servicios-titulo" className="text-2xl font-semibold mb-5">Servicios</h2>
-          {business.services.length === 0 ? (
-            <EmptyState>Aún no hay servicios publicados.</EmptyState>
-          ) : (
-            <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {business.services.map((s, i) => {
-                const featured = i === 0;
-                return (
-                  <Card as="li" key={s.id} tone={featured ? 'accent' : 'default'} padding="sm" className="p-5 flex gap-4 items-start">
-                    <span
-                      aria-hidden="true"
-                      className={`w-11 h-11 shrink-0 rounded-full flex items-center justify-center text-lg ${featured ? 'bg-white/20' : 'bg-brand-neutral-2 text-brand-blue'}`}
-                    >
-                      ✦
-                    </span>
-                    <div>
-                      <p className="font-semibold">{s.title}</p>
-                      {s.description && <p className={`text-sm mt-1 ${featured ? 'opacity-85' : 'text-brand-dark/60'}`}>{s.description}</p>}
-                    </div>
-                  </Card>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-
-        <section id="eventos" aria-labelledby="eventos-titulo" className="scroll-mt-28">
-          <h2 id="eventos-titulo" className="text-2xl font-semibold mb-5">Próximos eventos</h2>
-          <EventsCountdown events={business.events} businessName={business.name} whatsapp={reservationsPhone} />
-        </section>
-
-        <section id="nosotros" aria-labelledby="nosotros-titulo" className="scroll-mt-28">
-          <h2 id="nosotros-titulo" className="text-2xl font-semibold mb-5">Nosotros</h2>
-          <Card className="space-y-4">
-            {paragraphs.map((p, i) => (
-              <p key={i} className="text-base leading-relaxed">{p}</p>
-            ))}
-            {amenities.length > 0 && (
-              <ul className="flex flex-wrap gap-2 pt-2" aria-label="Comodidades">
-                {amenities.map((a) => (
-                  <li key={a}><Badge tone="brand">{AMENITY_LABELS[a] ?? a}</Badge></li>
-                ))}
-              </ul>
-            )}
-          </Card>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
-            {business.hours && Object.keys(business.hours).length > 0 && (
-              <Card padding="sm" className="p-5">
-                <h3 className="font-semibold mb-3">Horarios</h3>
-                <ul className="space-y-1.5">
-                  {BUSINESS_DAYS.map((d) => (
-                    <li key={d} className="flex justify-between gap-4">
-                      <span className="capitalize text-brand-dark/60">{d}</span>
-                      <span>{hoursText(business.hours?.[d], d)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            )}
-            <Card padding="sm" className="p-5 space-y-2">
-              <h3 className="font-semibold mb-3">Contacto</h3>
-              {business.companyAddress && <p>{business.companyAddress}{business.comuna ? `, ${business.comuna}` : ''}</p>}
-              {business.companyPhone && <p>{business.companyPhone}</p>}
-              {instagram && <p><a href={instagram} target="_blank" rel="noopener noreferrer" className="underline text-brand-blue">Instagram</a></p>}
-              {business.website && <p><a href={business.website} target="_blank" rel="noopener noreferrer" className="underline text-brand-blue">Sitio web</a></p>}
-            </Card>
-          </div>
-        </section>
-
-        <section id="resenas" aria-labelledby="resenas-titulo" className="scroll-mt-28">
-          <h2 id="resenas-titulo" className="text-2xl font-semibold mb-5">Reseñas</h2>
-          <ReviewsSection slug={business.slug} reviews={business.reviews} rating={business.stats.rating} reviewCount={business.stats.reviewCount} />
-        </section>
-      </div>
+      <SectionTabs panels={panels} />
 
       <footer className="mt-16 pt-6 text-center text-xs text-brand-dark/60 border-t border-brand-neutral-2 px-4">
         Perfil administrado en HoySeSale.cl
