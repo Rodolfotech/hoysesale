@@ -71,8 +71,13 @@ export const CodeSchema = z.object({ code: z.string().catch('') });
 
 export const ProfileUpdateSchema = z.object({
   name: text().min(1).optional(),
+  category: z.enum(BUSINESS_CATEGORIES).nullish(),
   avatar: z.string().nullish(),
-  companyInstagram: z.string().nullish(),
+  companyInstagram: z
+    .string()
+    .regex(/^@[A-Za-z0-9_](?:[A-Za-z0-9_.]{0,28}[A-Za-z0-9_])?$/, 'El Instagram debe ser @usuario: hasta 30 caracteres (letras, números, _ o .)')
+    .refine((v) => !v.includes('..'), 'El Instagram no puede tener dos puntos seguidos')
+    .nullish(),
   website: z.string().nullish(),
   companyRut: z.string().nullish(),
   companyGiro: z.string().nullish(),

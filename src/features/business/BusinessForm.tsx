@@ -63,15 +63,10 @@ export interface BusinessFormInitial {
   coverUrl?: string | null;
 }
 
-// null borra el dato guardado: así un campo que el usuario vacía se limpia en la base.
+// Solo lo que se edita en el micro-sitio. Nombre, dirección, teléfono, Instagram, comuna y categoría vienen del perfil.
+// null borra el dato guardado.
 export interface BusinessFormPayload {
   slug?: string;
-  name: string;
-  comuna: string | null;
-  category: string | null;
-  companyAddress: string | null;
-  companyPhone: string | null;
-  companyInstagram: string | null;
   website: string | null;
   whatsappReservations: string | null;
   mapUrl: string | null;
@@ -94,7 +89,6 @@ const TAB_LABELS = { info: 'Información del negocio', contact: 'Encuéntranos',
 export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }: BusinessFormProps) {
   const draftKey = `draft:business:${mode}:${initial.slug ?? 'new'}`;
   const [slug, setSlug] = usePersistentState(`${draftKey}:slug`, initial.slug ?? '');
-  const [name, setName] = usePersistentState(`${draftKey}:name`, initial.name ?? '');
   // La URL sigue al nombre hasta que el usuario la edita; en un negocio existente no cambia sola.
   const [slugTouched, setSlugTouched] = useState(mode === 'edit');
   const [slugStatus, setSlugStatus] = useState<{ available: boolean | null; message?: string; suggestion?: string }>({ available: null });
@@ -111,14 +105,6 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
     }, 400);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [slug]);
-  const [comuna, setComuna] = usePersistentState(`${draftKey}:comuna`, initial.comuna ?? '');
-  const [category, setCategory] = usePersistentState(`${draftKey}:category`, initial.category ?? '');
-  // La dirección se guarda como un solo texto ("Calle 123"): aquí se separa en calle y número.
-  const [initialStreet, initialNumber] = splitAddress(initial.companyAddress);
-  const [street, setStreet] = usePersistentState(`${draftKey}:street`, initialStreet);
-  const [number, setNumber] = usePersistentState(`${draftKey}:number`, initialNumber);
-  const [phone, setPhone] = usePersistentState(`${draftKey}:phone`, phoneDigitsFrom(initial.companyPhone));
-  const [instagram, setInstagram] = usePersistentState(`${draftKey}:instagram`, instagramHandleFrom(initial.companyInstagram));
   const [website, setWebsite] = usePersistentState(`${draftKey}:website`, websiteRestFrom(initial.website));
   // Por defecto el WhatsApp es el mismo teléfono, hasta que el usuario lo cambie a mano.
   const [whatsappTouched, setWhatsappTouched] = useState(!!initial.whatsappReservations);
@@ -148,12 +134,6 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
       await onSubmit(
         {
           slug: slug.trim(),
-          name: name.trim(),
-          comuna: comuna || null,
-          category: category || null,
-          companyAddress: [street.trim(), number].filter(Boolean).join(' ') || null,
-          companyPhone: phone ? `+569${phone}` : null,
-          companyInstagram: instagramValueFrom(instagram) ?? null,
           website: websiteValueFrom(website) ?? null,
           whatsappReservations: whatsapp ? `+569${whatsapp}` : null,
           mapUrl: mapUrl.trim() || null,
@@ -215,42 +195,12 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
         {mode === 'create' && <p className="text-xs mt-1" style={{ color: '#1D1D1F99' }}>Puedes cambiarla después desde Editar.</p>}
       </div>
 
-      <FormInput label="Nombre del negocio" value={name} onChange={(e) => { const next = formatBusinessName(e.target.value); setName(next); if (!slugTouched) setSlug(slugifyName(next)); }} placeholder="Nombre comercial" required />
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={label} style={{ color: '#1D1D1F' }}>Comuna</label>
-          <select value={comuna} onChange={(e) => setComuna(e.target.value)} className="w-full px-3 py-2 rounded-xl text-sm light-form">
-            <option value="">Selecciona</option>
-            {COMUNAS.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className={label} style={{ color: '#1D1D1F' }}>Categoría</label>
-          <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-3 py-2 rounded-xl text-sm light-form">
-            <option value="">Sin categoría</option>
-            {BUSINESS_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-      </div>
-
-      <p className="block text-sm font-medium mb-1.5" style={{ color: '#1D1D1F', fontSize: '14px' }}>Dirección</p>
-      <FormInput label="Calle" value={street} onChange={(e) => setStreet(e.target.value.slice(0, 50))} maxLength={50} required placeholder="Nombre de la calle" />
-      <FormInput label="Número" value={number} onChange={(e) => setNumber(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" maxLength={6} placeholder="Número" />
-
-      <div className="grid grid-cols-2 gap-3">
-        <PhoneInput label="Teléfono" value={phone} onChange={(digits) => { setPhone(digits); if (!whatsappTouched) setWhatsapp(digits); }} />
-      </div>
-
       </div>
       )}
 
       {tab === 'contact' && (
       <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3">
-        <InstagramInput label="Instagram" value={instagram} onChange={setInstagram} />
-        <WebsiteInput label="Sitio web" value={website} onChange={setWebsite} error={websiteError(website)} />
-      </div>
+      <WebsiteInput label="Sitio web" value={website} onChange={setWebsite} error={websiteError(website)} />
 
       <fieldset className="rounded-xl p-4 space-y-3" style={{ border: '1px solid #E4EBFA' }}>
         <legend className="px-1 text-sm font-medium" style={{ color: '#1D1D1F' }}>Botones de la barra inferior</legend>
@@ -360,7 +310,7 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
         <button
           type="button"
           onClick={submit}
-          disabled={saving || !name.trim() || !street.trim() || !slug || slugStatus.available === false || !!websiteError(website)}
+          disabled={saving || !slug || slugStatus.available === false || !!websiteError(website)}
           className="px-6 py-2.5 rounded-xl text-sm font-medium text-white cursor-pointer disabled:opacity-50"
           style={{ backgroundColor: '#2563EB' }}
         >

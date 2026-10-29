@@ -110,14 +110,18 @@ function userData(fields: Omit<BusinessPage, "slug">): Prisma.UserUpdateInput {
 
 // Crea la página del negocio con la URL que elige el cliente (una sola vez por cuenta).
 export async function createBusinessPage(userId: string, dto: BusinessPage) {
-  const current = await prisma.user.findUnique({ where: { id: userId }, select: { slug: true, name: true } });
+  const current = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { slug: true, name: true, companyAddress: true },
+  });
   if (!current) throw badRequest('Usuario no encontrado');
   if (current.slug) throw conflict('Ya tienes una página creada');
 
+  // Nombre y dirección vienen del perfil por defecto.
   const { slug: rawSlug, ...fields } = dto;
-  if (!fields.name) throw badRequest('El nombre del negocio es obligatorio');
-  if (!fields.companyAddress) throw badRequest('La dirección es obligatoria');
-  const slug = (rawSlug ?? slugify(fields.name ?? current.name)).trim().toLowerCase();
+  if (!current.name) throw badRequest('Completa el nombre de la empresa en tu perfil');
+  if (!current.companyAddress) throw badRequest('Completa la dirección de la empresa en tu perfil');
+  const slug = (rawSlug ?? slugify(current.name)).trim().toLowerCase();
   await assertSlugAvailable(slug, userId);
 
   return prisma.user.update({ where: { id: userId }, data: { ...userData(fields), slug }, select: PUBLIC_BUSINESS_SELECT });
