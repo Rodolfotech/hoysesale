@@ -27,7 +27,6 @@ const PUBLIC_BUSINESS_SELECT = {
   amenities: true,
   whatsappReservations: true,
   mapUrl: true,
-  aboutImages: true,
   comuna: true,
   city: true,
   companyAddress: true,
@@ -320,7 +319,7 @@ export async function addAboutImage(userId: string, file: File) {
   return prisma.user.update({
     where: { id: userId },
     data: { aboutImages: { push: url } },
-    select: PUBLIC_BUSINESS_SELECT,
+    select: { aboutImages: true },
   });
 }
 
@@ -330,7 +329,7 @@ export async function removeAboutImage(userId: string, url: string) {
   const updated = await prisma.user.update({
     where: { id: userId },
     data: { aboutImages: current.aboutImages.filter((image) => image !== url) },
-    select: PUBLIC_BUSINESS_SELECT,
+    select: { aboutImages: true },
   });
   // El archivo se borra después de quitarlo de la lista: si falla, solo queda basura en Storage.
   const path = storagePathFromUrl(url);

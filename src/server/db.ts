@@ -10,11 +10,13 @@ function createPrismaClient() {
     max: process.env.VERCEL ? 1 : 10,
     idleTimeoutMillis: process.env.VERCEL ? 5000 : 10000,
   });
-  return new PrismaClient({ adapter: new PrismaPg(pool) });
+  // aboutImages se omite en todas las consultas por defecto: la columna no existe aún en producción (ver SPEC.md).
+  // Se vuelve a incluir cuando se apliquen las migraciones y se quite esta regla.
+  return new PrismaClient({ adapter: new PrismaPg(pool), omit: { user: { aboutImages: true } } });
 }
 
 // Un solo cliente por proceso: el hot reload de `next dev` no debe abrir pools nuevos en cada recarga.
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+const globalForPrisma = globalThis as unknown as { prisma?: ReturnType<typeof createPrismaClient> };
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
