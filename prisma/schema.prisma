@@ -46,6 +46,7 @@ model User {
   amenities            Json?
   whatsappReservations String?
   mapUrl               String?
+  aboutImages          String[] @default([]) // hasta 3 fotos del negocio (sección Nosotros)
 
   ownedEvents        Event[]             @relation("EventOwner")
   registrations      Attendee[]

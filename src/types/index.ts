@@ -2,6 +2,7 @@ export interface User {
   // Micro-sitio del negocio
   slug?: string | null;
   hours?: Record<string, string> | null;
+  aboutImages?: string[];
   category?: string | null;
   businessDescription?: string | null;
   amenities?: string[] | null;

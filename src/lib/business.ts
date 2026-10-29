@@ -44,6 +44,7 @@ export interface BusinessReview {
 }
 
 export interface Business {
+  aboutImages: string[];
   createdAt?: string;
   stats: { rating: number | null; reviewCount: number; years: number };
   products: BusinessProduct[];

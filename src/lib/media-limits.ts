@@ -10,3 +10,6 @@ export const WEBP_TYPES = ['image/webp'];
 // La portada tiene medida exacta y un peso máximo propio.
 export const COVER_MAX_BYTES = 90 * 1024;
 export const COVER_SIZE = { width: 1200, height: 400 };
+
+// Fotos del negocio para "Nosotros".
+export const ABOUT_MAX_IMAGES = 3;

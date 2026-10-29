@@ -118,6 +118,14 @@ export const adminApi = {
 
 // Micro-sitio del negocio (edición del propio negocio)
 export const businessApi = {
+  uploadAboutImage: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post<{ aboutImages: string[] }>('/businesses/me/about-images', form, { headers: { 'Content-Type': undefined } });
+  },
+  deleteAboutImage: (url: string) =>
+    api.delete<{ aboutImages: string[] }>('/businesses/me/about-images', { params: { url } }),
+  getBySlug: (slug: string) => api.get<any>(`/businesses/${slug}`),
   checkSlug: (slug: string) =>
     api.get<{ available: boolean; message?: string; suggestion?: string }>('/businesses/check-slug', { params: { slug } }),
   addItem: (type: 'products' | 'services' | 'highlights', data: object) => api.post(`/businesses/me/${type}`, data),
@@ -131,19 +139,20 @@ export const businessApi = {
     // Sin Content-Type fijo: el navegador agrega el boundary de multipart.
     return api.post<Partial<User>>(`/businesses/me/image/${kind}`, form, { headers: { 'Content-Type': undefined } });
   },
+  // null limpia el campo guardado; undefined no lo toca.
   updateMe: (data: Partial<{
     name: string;
-    comuna: string;
-    companyAddress: string;
-    companyPhone: string;
-    companyInstagram: string;
-    website: string;
+    comuna: string | null;
+    companyAddress: string | null;
+    companyPhone: string | null;
+    companyInstagram: string | null;
+    website: string | null;
     hours: Record<string, string>;
     slug: string;
-    category: string;
-    businessDescription: string;
+    category: string | null;
+    businessDescription: string | null;
     amenities: string[];
-    whatsappReservations: string;
-    mapUrl: string;
+    whatsappReservations: string | null;
+    mapUrl: string | null;
   }>) => api.put<Partial<User>>('/businesses/me', data),
 };

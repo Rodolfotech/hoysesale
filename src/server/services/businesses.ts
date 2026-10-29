@@ -4,7 +4,7 @@ import { prisma } from '../db';
 import { badRequest, conflict, notFound } from '../http';
 import { BUSINESS_SLUG_MAX, slugify, slugProblem } from '../businesses/slug';
 import { ALLOWED_IMAGE_TYPES, getMediaStorage } from '../storage';
-import { COVER_MAX_BYTES, COVER_SIZE, LOGO_MAX_BYTES, MAX_IMAGE_BYTES } from '@/lib/media-limits';
+import { ABOUT_MAX_IMAGES, COVER_MAX_BYTES, COVER_SIZE, LOGO_MAX_BYTES, MAX_IMAGE_BYTES } from '@/lib/media-limits';
 import imageSize from 'image-size';
 import type { z } from 'zod';
 import type { Business } from '@/lib/business';
@@ -27,6 +27,7 @@ const PUBLIC_BUSINESS_SELECT = {
   amenities: true,
   whatsappReservations: true,
   mapUrl: true,
+  aboutImages: true,
   comuna: true,
   city: true,
   companyAddress: true,
@@ -298,4 +299,45 @@ async function suggestSlug(base: string, ownerId?: string): Promise<string | und
     if (!(await slugProblem(prisma, candidate, ownerId))) return candidate;
   }
   return undefined;
+}
+
+// Fotos del negocio para la sección "Nosotros": hasta 3 imágenes.
+
+export async function addAboutImage(userId: string, file: File) {
+  const current = await prisma.user.findUnique({ where: { id: userId }, select: { aboutImages: true } });
+  if (!current) throw badRequest('Usuario no encontrado');
+  if (current.aboutImages.length >= ABOUT_MAX_IMAGES) throw badRequest(`Puedes subir hasta ${ABOUT_MAX_IMAGES} imágenes`);
+  const ext = ALLOWED_IMAGE_TYPES[file.type];
+  if (!ext) throw badRequest('Formato no permitido (usa jpeg, png o webp)');
+  if (file.size > MAX_IMAGE_BYTES) throw badRequest('La imagen es muy pesada. Tamaño máximo 4 MB');
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const url = await getMediaStorage().upload(`${userId}/business/about-${randomUUID()}.${ext}`, buffer, file.type);
+  return prisma.user.update({
+    where: { id: userId },
+    data: { aboutImages: { push: url } },
+    select: PUBLIC_BUSINESS_SELECT,
+  });
+}
+
+export async function removeAboutImage(userId: string, url: string) {
+  const current = await prisma.user.findUnique({ where: { id: userId }, select: { aboutImages: true } });
+  if (!current?.aboutImages.includes(url)) throw notFound('Imagen no encontrada');
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { aboutImages: current.aboutImages.filter((image) => image !== url) },
+    select: PUBLIC_BUSINESS_SELECT,
+  });
+  // El archivo se borra después de quitarlo de la lista: si falla, solo queda basura en Storage.
+  const path = storagePathFromUrl(url);
+  if (path) await getMediaStorage().remove(path);
+  return updated;
+}
+
+// Ruta dentro del almacenamiento a partir de la URL guardada (local o Supabase).
+function storagePathFromUrl(url: string): string | undefined {
+  const local = url.split('/uploads/')[1];
+  if (local) return local;
+  const supabase = url.split(`/object/public/${process.env.SUPABASE_BUCKET ?? 'SupabaseImage_Storage'}/`)[1];
+  return supabase ? decodeURIComponent(supabase) : undefined;
 }
