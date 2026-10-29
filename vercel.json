@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/social/refresh-images",
+      "schedule": "0 4 * * *"
+    }
+  ]
+}

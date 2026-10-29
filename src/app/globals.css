@@ -1,0 +1,176 @@
+@import "tailwindcss";
+
+@theme {
+  --color-neon-cyan: #00f0ff;
+  --color-neon-purple: #8b5cf6;
+  --color-neon-pink: #f472b6;
+  --color-dark-900: #0a0a1a;
+  --color-dark-800: #12122a;
+  --color-dark-700: #1a1a3e;
+  --color-dark-600: #222255;
+  --color-glass: rgba(255, 255, 255, 0.05);
+  --color-glass-border: rgba(255, 255, 255, 0.1);
+  /* Paleta cromática de marca */
+  --color-brand-dark: #1D1D1F;
+  --color-brand-blue: #2563EB;
+  --color-brand-neutral-1: #F8FAFC;
+  --color-brand-neutral-2: #E4EBFA;
+  --color-brand-white: #FFFFFF;
+
+  --font-sans: 'Raleway', system-ui, -apple-system, sans-serif;
+  --font-brand: 'Raleway', system-ui, sans-serif;
+
+  /* Escala tipográfica de marca */
+  --text-h1: 60px;
+  --text-h1--line-height: 70px;
+  --text-h2: 36px;
+  --text-h2--line-height: 60px;
+  --text-h3: 20px;
+  --text-h3--line-height: 28px;
+  --text-p1: 18px;
+  --text-p1--line-height: 28px;
+  --text-p2: 18px;
+  --text-p2--line-height: 28px;
+  --text-p3: 14px;
+  --text-p3--line-height: 16px;
+}
+
+body {
+  background-color: var(--color-brand-neutral-1);
+  color: var(--color-brand-dark);
+  font-family: var(--font-sans);
+}
+
+.glass {
+  background: var(--color-glass);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-glass-border);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.15), 0 0 60px rgba(0, 240, 255, 0.05);
+}
+
+.glow-purple {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.15), 0 0 60px rgba(139, 92, 246, 0.05);
+}
+
+.glow-pink {
+  box-shadow: 0 0 20px rgba(244, 114, 182, 0.15), 0 0 60px rgba(244, 114, 182, 0.05);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #00f0ff, #8b5cf6, #f472b6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.border-gradient {
+  border-image: linear-gradient(135deg, #00f0ff, #8b5cf6, #f472b6) 1;
+}
+
+/* ── Sistema tipográfico de marca ── */
+/* Tailwind classes pueden sobreescribir estos estilos base */
+h1 {
+  font-size: 60px;
+  line-height: 70px;
+  font-weight: 500;
+  font-family: var(--font-brand);
+}
+
+h2 {
+  font-size: 36px;
+  line-height: 60px;
+  font-weight: 600;
+  font-family: var(--font-brand);
+}
+
+h3 {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 400;
+  font-family: var(--font-brand);
+}
+
+/* Clases utilitarias explícitas */
+.tipo-h1 { font-size: 60px; line-height: 70px; font-weight: 500; }
+.tipo-h2 { font-size: 36px; line-height: 60px; font-weight: 600; }
+.tipo-h3 { font-size: 20px; line-height: 28px; font-weight: 400; }
+.tipo-p1 { font-size: 18px; line-height: 28px; font-weight: 400; }
+.tipo-p2 { font-size: 18px; line-height: 28px; font-weight: 600; }
+.tipo-p3 { font-size: 14px; line-height: 16px; font-weight: 500; }
+
+input, textarea, select {
+  background: var(--color-dark-700) !important;
+  border: 1px solid var(--color-glass-border) !important;
+  color: #e2e8f0 !important;
+  outline: none !important;
+  transition: all 0.3s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--color-neon-cyan) !important;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.1) !important;
+}
+
+/* Override para formularios sobre fondo claro */
+.light-form input,
+.light-form textarea,
+.light-form select,
+input.light-form,
+textarea.light-form,
+select.light-form {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  color: #1f2937 !important;
+}
+
+.light-form input:focus,
+.light-form textarea:focus,
+.light-form select:focus,
+input.light-form:focus,
+textarea.light-form:focus,
+select.light-form:focus {
+  border-color: #2563EB !important;
+  box-shadow: none !important;
+}
+
+
+/* Override para inputs del perfil (fondo blanco, texto gris) */
+input.profile-input,
+textarea.profile-input,
+select.profile-input {
+  background: #FFFFFF !important;
+  border: 1px solid #E4EBFA !important;
+  color: #1D1D1F99 !important;
+}
+
+input.profile-input:focus,
+textarea.profile-input:focus,
+select.profile-input:focus {
+  border-color: #2563EB !important;
+  box-shadow: none !important;
+}
+
+input.profile-input::placeholder,
+textarea.profile-input::placeholder {
+  color: #1D1D1F66 !important;
+}
+
+::selection {
+  background: rgba(0, 240, 255, 0.3);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-dark-800);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-neon-purple);
+  border-radius: 3px;
+}
