@@ -1,6 +1,7 @@
 import api from './client';
 import { ADMIN_API_PREFIX } from '../constants/admin';
 import type { User, Event, Category, CreateEventPayload, SocialConnectPayload, SocialPost, PaginatedResponse } from '../types';
+import type { Business } from '@/lib/business';
 
 // Registro obligatorio de organizador (mismos campos que RegisterDto del backend)
 export interface RegisterPayload {
@@ -96,7 +97,7 @@ export const socialApi = {
   refreshToken: () => api.post('/social/instagram/refresh'),
   syncFeed: (eventId: string) => api.post(`/social/sync/${eventId}`),
   getUserMedia: () => api.get<SocialPost[]>('/social/instagram/media'),
-  getValidation: () => api.get<any>('/social/instagram/validation'),
+  getValidation: () => api.get<Record<string, unknown>>('/social/instagram/validation'),
 };
 
 export const usersApi = {
@@ -125,7 +126,7 @@ export const businessApi = {
   },
   deleteAboutImage: (url: string) =>
     api.delete<{ aboutImages: string[] }>('/businesses/me/about-images', { params: { url } }),
-  getBySlug: (slug: string) => api.get<any>(`/businesses/${slug}`),
+  getBySlug: (slug: string) => api.get<Business>(`/businesses/${slug}`),
   checkSlug: (slug: string) =>
     api.get<{ available: boolean; message?: string; suggestion?: string }>('/businesses/check-slug', { params: { slug } }),
   addItem: (type: 'products' | 'services' | 'highlights', data: object) => api.post(`/businesses/me/${type}`, data),

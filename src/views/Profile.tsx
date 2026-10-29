@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { socialApi, usersApi } from '../api';
 import { InstagramLinkModal } from '../features/social/InstagramLinkModal';
-import { BusinessSettings } from '../features/business/BusinessSettings';
 import { SocialPostCard } from '../features/social/SocialPostCard';
 import { Toast } from '../components/ui/Toast';
 import { ProfileField } from '../components/ui/ProfileField';
@@ -340,16 +339,6 @@ export default function Profile() {
             )}
           </div>
         </div>
-
-        {/* ── Mi micro-sitio ── */}
-        {user && (
-          <div className="mb-6">
-            <BusinessSettings
-              user={user}
-              onSaved={(newSlug) => setUser({ ...user, slug: newSlug ?? user.slug })}
-            />
-          </div>
-        )}
 
         {/* ── Publicaciones de Instagram ── */}
         {instagramConnected && (

@@ -2,7 +2,7 @@
 import { whatsappLink } from '@/features/business/format';
 import { hoursText } from '@/lib/hours';
 import { BusinessOwnerBar } from '@/features/business/BusinessOwnerBar';
-import { productsToOffer, servicesToOffer } from '@/features/business/OfferItems';
+import { productsToOffer, servicesToOffer } from '@/features/business/offer';
 import { ImageCarousel } from '@/components/ui/ImageCarousel';
 import { ProductsSection } from '@/features/business/ProductsSection';
 import { EventsCountdown } from '@/features/business/EventsCountdown';

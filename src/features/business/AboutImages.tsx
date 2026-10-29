@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { apiErrorMessage } from '@/lib/api-error';
 import { businessApi } from '../../api';
 import { ABOUT_MAX_IMAGES } from '@/lib/media-limits';
 
@@ -16,9 +17,8 @@ export function AboutImages({ images, onChange }: { images: string[]; onChange: 
     try {
       const { data } = await businessApi.uploadAboutImage(file);
       onChange(data.aboutImages ?? []);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message;
-      setError(Array.isArray(msg) ? msg.join(', ') : msg || 'No se pudo subir la imagen');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'No se pudo subir la imagen'));
     } finally {
       setBusy(false);
     }
