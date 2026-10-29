@@ -2,11 +2,12 @@ import { z } from 'zod';
 import { COMUNAS } from '@/constants/comunas';
 import { BUSINESS_AMENITIES, BUSINESS_CATEGORIES } from '@/constants/business';
 import { AUDIENCES, ENTRY_TYPES, INTERACTION_TYPES } from './events/filters';
+import { HOURS_ERROR, HOURS_PATTERN } from '@/lib/hours';
 
 // Esquemas de entrada de la API (reemplazan los DTO de class-validator del backend NestJS).
 // Los objetos de zod eliminan los campos desconocidos: así no se puede escribir en columnas que el cliente no debe tocar.
 
-const PHONE_CL = /^\+569\d{8}$/;
+const PHONE_CL = /^\+569[3-9]\d{7}$/;
 const PHONE_MESSAGE = 'El teléfono debe tener formato +569XXXXXXXX';
 
 const text = (max?: number) => {
@@ -14,16 +15,21 @@ const text = (max?: number) => {
   return max ? base.max(max, `Máximo ${max} caracteres`) : base;
 };
 
+// Las URL se escriben sin protocolo (www.mitienda.cl) o con http://: se guardan como https://.
+const toHttps = (value: string) => 'https://' + value.trim().replace(/^https?:\/\//i, '');
+
 const httpsUrl = z
   .string()
   .trim()
+  .transform(toHttps)
   .refine((value) => {
     try {
-      return new URL(value).protocol === 'https:';
+      const url = new URL(value);
+      return url.protocol === 'https:' && url.hostname.includes('.');
     } catch {
       return false;
     }
-  }, 'Debe ser una URL https válida');
+  }, 'Escribe una dirección válida, por ejemplo www.mitienda.cl');
 
 const anyHttpUrl = z
   .string()
@@ -148,18 +154,22 @@ export const LinkMediaSchema = z.object({
 // --- Negocios (micro-sitios) ---
 
 export const BusinessPageSchema = z.object({
-  name: text(120).min(1).optional(),
+  name: text(20).min(1, 'El nombre del negocio es obligatorio').regex(/^[\p{L}\p{N} ]+$/u, 'El nombre solo puede tener letras, números y espacios').optional(),
   comuna: z.enum(COMUNAS).nullish(),
   companyAddress: text(200).nullish(),
   companyPhone: z.string().regex(PHONE_CL, PHONE_MESSAGE).nullish(),
-  companyInstagram: text(200).nullish(),
+  companyInstagram: z
+    .string()
+    .regex(/^@[A-Za-z0-9_](?:[A-Za-z0-9_.]{0,28}[A-Za-z0-9_])?$/, 'El Instagram debe ser @usuario: hasta 30 caracteres (letras, números, _ o .)')
+    .refine((v) => !v.includes('..'), 'El Instagram no puede tener dos puntos seguidos')
+    .nullish(),
   website: httpsUrl.nullish(),
-  slug: text(60).optional(),
+  slug: text(20).optional(),
   category: z.enum(BUSINESS_CATEGORIES).nullish(),
   logoUrl: httpsUrl.nullish(),
   coverUrl: httpsUrl.nullish(),
   businessDescription: text(2000).nullish(),
-  hours: z.record(z.string(), z.string()).nullish(),
+  hours: z.record(z.string(), z.string().regex(HOURS_PATTERN, HOURS_ERROR).or(z.literal(''))).nullish(),
   amenities: z.array(z.enum(BUSINESS_AMENITIES)).max(BUSINESS_AMENITIES.length).nullish(),
   whatsappReservations: z.string().regex(PHONE_CL, 'El WhatsApp debe tener formato +569XXXXXXXX').nullish(),
   mapUrl: httpsUrl.nullish(),
@@ -169,7 +179,7 @@ export const BusinessPageSchema = z.object({
 export const BusinessItemSchema = z.object({
   name: text(120).optional(),
   title: text(120).optional(),
-  description: text(1000).nullish(),
+  description: text(2000).nullish(),
   price: z.number().int().min(0).nullish(),
   imageUrl: anyHttpUrl.nullish(),
   tag: z.enum(['MAS_VENDIDO', 'DEL_DIA', 'REGALO', 'NUEVO']).nullish(),

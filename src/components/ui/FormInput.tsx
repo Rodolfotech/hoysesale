@@ -15,6 +15,8 @@ interface FormInputProps {
   rightElement?: React.ReactNode;
   autoComplete?: string;
   filledBg?: string;
+  maxLength?: number;
+  inputMode?: 'numeric' | 'text' | 'tel' | 'email';
 }
 
 export function FormInput({
@@ -29,6 +31,8 @@ export function FormInput({
   rightElement,
   autoComplete,
   filledBg,
+  maxLength,
+  inputMode,
 }: FormInputProps) {
   const generatedId = useId();
   const inputId = propId ?? generatedId;
@@ -64,6 +68,8 @@ export function FormInput({
           placeholder={placeholder}
           required={required}
           autoComplete={autoComplete}
+          maxLength={maxLength}
+          inputMode={inputMode}
           className={`w-full ${Icon ? 'pl-10' : 'pl-4'} ${rightElement ? 'pr-10' : 'pr-4'} py-2.5 rounded-xl text-sm light-form`}
         />
         {rightElement && (

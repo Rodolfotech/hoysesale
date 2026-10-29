@@ -106,7 +106,7 @@ export function BusinessContentManager({ open, onClose, products, services, high
           {type !== 'highlights' && (
             <div>
               <label htmlFor="cont-desc" className={label} style={{ color: '#1D1D1F' }}>Descripción</label>
-              <textarea id="cont-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} maxLength={1000} className="w-full px-3 py-2 rounded-xl text-sm light-form resize-none" />
+              <textarea id="cont-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} maxLength={2000} className="w-full px-3 py-2 rounded-xl text-sm light-form resize-none" />
             </div>
           )}
           {type === 'products' && (

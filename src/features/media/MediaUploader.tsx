@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Upload, X } from 'lucide-react';
 
 export const MEDIA_ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-export const MEDIA_MAX_BYTES = 5 * 1024 * 1024;
+export const MEDIA_MAX_BYTES = 4 * 1024 * 1024;
 
 interface MediaUploaderProps {
   file: File | null;
@@ -33,7 +33,7 @@ export function MediaUploader({ file, onChange, onError }: MediaUploaderProps) {
       return;
     }
     if (picked.size > MEDIA_MAX_BYTES) {
-      onError?.('La imagen supera el máximo de 5 MB');
+      onError?.('La imagen es muy pesada. Tamaño máximo 4 MB');
       return;
     }
     onChange(picked);
@@ -60,7 +60,7 @@ export function MediaUploader({ file, onChange, onError }: MediaUploaderProps) {
           style={{ border: '1px dashed #2563EB', color: '#2563EB', backgroundColor: '#F8FAFC' }}
         >
           <Upload className="w-6 h-6" />
-          <span>Subir imagen (jpeg, png o webp, máx. 5 MB)</span>
+          <span>Subir imagen (jpeg, png o webp, máx. 4 MB)</span>
           <input
             type="file"
             accept={MEDIA_ACCEPTED_TYPES.join(',')}

@@ -15,8 +15,7 @@ export function getMediaStorage(): MediaStorage {
   return process.env.STORAGE_DRIVER === 'local' ? localMediaStorage : supabaseMediaStorage;
 }
 
-// Límites de imagen: Vercel limita el cuerpo de una petición a 4,5 MB.
-export const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+export { MAX_IMAGE_BYTES, LOGO_MAX_BYTES } from '@/lib/media-limits';
 
 export const ALLOWED_IMAGE_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',

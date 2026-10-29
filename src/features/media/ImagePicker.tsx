@@ -1,8 +1,9 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { Upload } from 'lucide-react';
 import { MEDIA_ACCEPTED_TYPES, MEDIA_MAX_BYTES } from './MediaUploader';
+import { Popover } from '@/components/ui/Popover';
 
 interface ImagePickerProps {
   label: string;
@@ -11,23 +12,56 @@ interface ImagePickerProps {
   onChange: (url: string) => void;
   aspect?: 'square' | 'wide';
   hint?: string;
+  maxBytes?: number; // por defecto, MEDIA_MAX_BYTES
+  allowedTypes?: string[]; // por defecto, MEDIA_ACCEPTED_TYPES
+  info?: ReactNode; // texto del botón de información junto al nombre
+  requiredSize?: { width: number; height: number }; // medida exacta de la imagen
+}
+
+function imageDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('No se pudo leer la imagen'));
+    };
+    img.src = url;
+  });
+}
+
+const TYPE_NAMES: Record<string, string> = { 'image/jpeg': 'jpeg', 'image/png': 'png', 'image/webp': 'WEBP' };
+
+function formatBytes(bytes: number): string {
+  return bytes >= 1024 * 1024 ? `${bytes / (1024 * 1024)} MB` : `${Math.round(bytes / 1024)} KB`;
 }
 
 // Imagen guardada con opción de cambiarla. Sube al elegir el archivo y conserva la URL.
-export function ImagePicker({ label, value, onUpload, onChange, aspect = 'square', hint }: ImagePickerProps) {
+export function ImagePicker({ label, value, onUpload, onChange, aspect = 'square', hint, maxBytes = MEDIA_MAX_BYTES, allowedTypes = MEDIA_ACCEPTED_TYPES, info, requiredSize }: ImagePickerProps) {
   const inputId = useId();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
 
   const pick = async (file: File | undefined) => {
     if (!file) return;
-    if (!MEDIA_ACCEPTED_TYPES.includes(file.type)) {
-      setError('Formato no permitido (usa jpeg, png o webp)');
+    if (!allowedTypes.includes(file.type)) {
+      setError(`Formato no permitido (usa ${allowedTypes.map((t) => TYPE_NAMES[t] ?? t).join(', ')})`);
       return;
     }
-    if (file.size > MEDIA_MAX_BYTES) {
-      setError('La imagen supera el máximo de 5 MB');
+    if (file.size > maxBytes) {
+      setError(`La imagen es muy pesada. Tamaño máximo ${formatBytes(maxBytes)}`);
       return;
+    }
+    if (requiredSize) {
+      const { width, height } = await imageDimensions(file);
+      if (width !== requiredSize.width || height !== requiredSize.height) {
+        setError(`La imagen debe medir ${requiredSize.width} × ${requiredSize.height} px`);
+        return;
+      }
     }
     setError('');
     setUploading(true);
@@ -43,7 +77,7 @@ export function ImagePicker({ label, value, onUpload, onChange, aspect = 'square
 
   return (
     <div>
-      <p id={`${inputId}-label`} className="block text-xs mb-1" style={{ color: '#1D1D1F' }}>{label}</p>
+      <p id={`${inputId}-label`} className="flex items-center gap-1.5 text-xs mb-1" style={{ color: '#1D1D1F' }}>{label}{info && <Popover label={`Información de ${label.toLowerCase()}`}>{info}</Popover>}</p>
       <div className={`relative w-full ${aspect === 'wide' ? 'max-w-2xl aspect-[3/1]' : 'max-w-[200px] aspect-square'} rounded-xl overflow-hidden`} style={{ border: '1px solid #E4EBFA', backgroundColor: '#F8FAFC' }}>
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -62,7 +96,7 @@ export function ImagePicker({ label, value, onUpload, onChange, aspect = 'square
         <input
           id={inputId}
           type="file"
-          accept={MEDIA_ACCEPTED_TYPES.join(',')}
+          accept={allowedTypes.join(',')}
           className="sr-only"
           disabled={uploading}
           aria-labelledby={`${inputId}-label`}

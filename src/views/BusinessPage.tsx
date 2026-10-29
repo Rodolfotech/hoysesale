@@ -1,5 +1,6 @@
 // Micro-sitio público de un negocio. Componente de servidor (HTML indexable). Las partes interactivas son componentes de cliente.
 import { whatsappLink } from '@/features/business/format';
+import { hoursText } from '@/lib/hours';
 import { BusinessOwnerBar } from '@/features/business/BusinessOwnerBar';
 import { ProductsSection } from '@/features/business/ProductsSection';
 import { EventsCountdown } from '@/features/business/EventsCountdown';
@@ -194,7 +195,7 @@ export default function BusinessPage({ business }: { business: Business }) {
                   {BUSINESS_DAYS.map((d) => (
                     <li key={d} className="flex justify-between gap-4">
                       <span className="capitalize text-brand-dark/60">{d}</span>
-                      <span>{business.hours?.[d] || 'Cerrado'}</span>
+                      <span>{hoursText(business.hours?.[d], d)}</span>
                     </li>
                   ))}
                 </ul>
