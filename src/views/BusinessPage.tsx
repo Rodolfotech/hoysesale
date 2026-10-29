@@ -2,6 +2,8 @@
 import { whatsappLink } from '@/features/business/format';
 import { hoursText } from '@/lib/hours';
 import { BusinessOwnerBar } from '@/features/business/BusinessOwnerBar';
+import { productsToOffer, servicesToOffer } from '@/features/business/OfferItems';
+import { ImageCarousel } from '@/components/ui/ImageCarousel';
 import { ProductsSection } from '@/features/business/ProductsSection';
 import { EventsCountdown } from '@/features/business/EventsCountdown';
 import { ReviewsSection } from '@/features/business/ReviewsSection';
@@ -61,6 +63,9 @@ export default function BusinessPage({ business }: { business: Business }) {
     businessDescription: business.businessDescription,
     amenities: business.amenities,
     hours: business.hours,
+    aboutImages: business.aboutImages,
+    products: productsToOffer(business.products),
+    services: servicesToOffer(business.services),
     logoUrl: business.logoUrl,
     coverUrl: business.coverUrl,
   };
@@ -120,6 +125,9 @@ export default function BusinessPage({ business }: { business: Business }) {
       content: (
             <section aria-labelledby="nosotros-titulo">
           <h2 id="nosotros-titulo" className="text-2xl font-semibold mb-5">Nosotros</h2>
+          <div className="mb-6">
+            <ImageCarousel images={business.aboutImages ?? []} alt={`Fotos de ${business.name}`} />
+          </div>
           <Card className="space-y-4">
             {paragraphs.map((p, i) => (
               <p key={i} className="text-base leading-relaxed">{p}</p>

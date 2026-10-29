@@ -4,6 +4,8 @@ import { usePersistentState } from '@/hooks/usePersistentState';
 import { useEffect, useState } from 'react';
 import { PhoneInput, phoneDigitsFrom } from '@/components/ui/PhoneInput';
 import { BusinessHours } from './BusinessHours';
+import { OfferItems, type OfferItem } from './OfferItems';
+import { AboutImages } from './AboutImages';
 import { COVER_MAX_BYTES, COVER_SIZE, LOGO_MAX_BYTES, WEBP_TYPES } from '@/lib/media-limits';
 import { WebsiteInput, websiteError, websiteRestFrom, websiteValueFrom } from '@/components/ui/WebsiteInput';
 import { InstagramInput, instagramHandleFrom, instagramValueFrom } from '@/components/ui/InstagramInput';
@@ -41,6 +43,9 @@ export function slugifyName(text: string): string {
 }
 
 export interface BusinessFormInitial {
+  aboutImages?: string[];
+  products?: OfferItem[];
+  services?: OfferItem[];
   slug?: string | null;
   name?: string | null;
   comuna?: string | null;
@@ -58,18 +63,19 @@ export interface BusinessFormInitial {
   coverUrl?: string | null;
 }
 
+// null borra el dato guardado: así un campo que el usuario vacía se limpia en la base.
 export interface BusinessFormPayload {
   slug?: string;
   name: string;
-  comuna: string;
-  category?: string;
-  companyAddress?: string;
-  companyPhone?: string;
-  companyInstagram?: string;
-  website?: string;
-  whatsappReservations?: string;
-  mapUrl?: string;
-  businessDescription?: string;
+  comuna: string | null;
+  category: string | null;
+  companyAddress: string | null;
+  companyPhone: string | null;
+  companyInstagram: string | null;
+  website: string | null;
+  whatsappReservations: string | null;
+  mapUrl: string | null;
+  businessDescription: string | null;
   amenities: string[];
   hours: Record<string, string>;
 }
@@ -83,7 +89,7 @@ interface BusinessFormProps {
 }
 
 // Formulario del micro-sitio. Lo usan la creación y la edición (reutilizable, sin lógica de página).
-const TAB_LABELS = { info: 'Información del negocio', contact: 'Encuéntranos', hours: 'Horario', offer: 'Oferta', about: 'Nosotros', events: 'Eventos', image: 'Identidad' } as const;
+const TAB_LABELS = { info: 'Información del negocio', contact: 'Encuéntranos', hours: 'Horario', offer: 'Oferta', about: 'Nosotros', image: 'Identidad' } as const;
 
 export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }: BusinessFormProps) {
   const draftKey = `draft:business:${mode}:${initial.slug ?? 'new'}`;
@@ -123,7 +129,10 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
   const [hours, setHours] = usePersistentState<Record<string, string>>(`${draftKey}:hours`, initial.hours ?? {});
   const [logoUrl, setLogoUrl] = usePersistentState<string | null>(`${draftKey}:logoUrl`, initial.logoUrl ?? null);
   const [coverUrl, setCoverUrl] = usePersistentState<string | null>(`${draftKey}:coverUrl`, initial.coverUrl ?? null);
-  const [tab, setTab] = useState<'info' | 'contact' | 'hours' | 'offer' | 'about' | 'events' | 'image'>('info');
+  const [products, setProducts] = useState<OfferItem[]>(initial.products ?? []);
+  const [aboutImages, setAboutImages] = useState<string[]>(initial.aboutImages ?? []);
+  const [services, setServices] = useState<OfferItem[]>(initial.services ?? []);
+  const [tab, setTab] = useState<'info' | 'contact' | 'hours' | 'offer' | 'about' | 'image'>('info');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -140,15 +149,15 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
         {
           slug: slug.trim(),
           name: name.trim(),
-          comuna,
-          category: category || undefined,
-          companyAddress: [street.trim(), number].filter(Boolean).join(' ') || undefined,
-          companyPhone: phone ? `+569${phone}` : undefined,
-          companyInstagram: instagramValueFrom(instagram),
-          website: websiteValueFrom(website),
-          whatsappReservations: whatsapp ? `+569${whatsapp}` : undefined,
-          mapUrl: mapUrl || undefined,
-          businessDescription: description || undefined,
+          comuna: comuna || null,
+          category: category || null,
+          companyAddress: [street.trim(), number].filter(Boolean).join(' ') || null,
+          companyPhone: phone ? `+569${phone}` : null,
+          companyInstagram: instagramValueFrom(instagram) ?? null,
+          website: websiteValueFrom(website) ?? null,
+          whatsappReservations: whatsapp ? `+569${whatsapp}` : null,
+          mapUrl: mapUrl.trim() || null,
+          businessDescription: description.trim() || null,
           amenities,
           hours: cleanHours,
         },
@@ -167,7 +176,7 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
   return (
     <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
       <div role="tablist" className="flex flex-wrap gap-x-2 gap-y-1" style={{ borderBottom: '1px solid #E4EBFA' }}>
-        {(['info', 'contact', 'hours', 'offer', 'about', 'events', 'image'] as const).map((key) => (
+        {(['info', 'contact', 'hours', 'offer', 'about', 'image'] as const).map((key) => (
           <button
             key={key}
             type="button"
@@ -225,11 +234,6 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
         </div>
       </div>
 
-      </div>
-      )}
-
-      {tab === 'contact' && (
-      <div className="space-y-5">
       <p className="block text-sm font-medium mb-1.5" style={{ color: '#1D1D1F', fontSize: '14px' }}>Dirección</p>
       <FormInput label="Calle" value={street} onChange={(e) => setStreet(e.target.value.slice(0, 50))} maxLength={50} required placeholder="Nombre de la calle" />
       <FormInput label="Número" value={number} onChange={(e) => setNumber(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" maxLength={6} placeholder="Número" />
@@ -238,6 +242,11 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
         <PhoneInput label="Teléfono" value={phone} onChange={(digits) => { setPhone(digits); if (!whatsappTouched) setWhatsapp(digits); }} />
       </div>
 
+      </div>
+      )}
+
+      {tab === 'contact' && (
+      <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3">
         <InstagramInput label="Instagram" value={instagram} onChange={setInstagram} />
         <WebsiteInput label="Sitio web" value={website} onChange={setWebsite} error={websiteError(website)} />
@@ -265,6 +274,15 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
 
       {tab === 'offer' && (
       <div className="space-y-5">
+      <OfferItems type="products" title="Productos" items={products} onChange={setProducts} />
+      <OfferItems type="services" title="Servicios" items={services} onChange={setServices} />
+
+      <div className="space-y-3">
+        <p className="text-sm font-semibold" style={{ color: '#1D1D1F' }}>Eventos</p>
+        <p className="text-sm" style={{ color: '#1D1D1F99' }}>Tus eventos aparecen automáticamente en la página del negocio. Para publicar uno nuevo, créalo desde la sección de eventos.</p>
+        <a href="/create-event" className="inline-block text-sm font-medium underline" style={{ color: '#2563EB' }}>Crear evento</a>
+      </div>
+
       <div>
         <p className={label} style={{ color: '#1D1D1F' }}>Comodidades</p>
         <div className="flex flex-wrap gap-2">
@@ -281,6 +299,7 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
 
       {tab === 'about' && (
       <div className="space-y-5">
+      <AboutImages images={aboutImages} onChange={setAboutImages} />
       <div>
         <label className={label} style={{ color: '#1D1D1F' }}>Descripción (2 a 4 párrafos; separa los párrafos con una línea en blanco)</label>
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} maxLength={2000} className="w-full px-3 py-2 rounded-xl text-sm light-form resize-none" />
@@ -306,13 +325,6 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
       {tab === 'info' && (
       <div className="space-y-5">
 
-      </div>
-      )}
-
-      {tab === 'events' && (
-      <div className="space-y-3">
-        <p className="text-sm" style={{ color: '#1D1D1F99' }}>Tus eventos aparecen automáticamente en la página del negocio. Para publicar uno nuevo, créalo desde la sección de eventos.</p>
-        <a href="/create-event" className="inline-block text-sm font-medium underline" style={{ color: '#2563EB' }}>Crear evento</a>
       </div>
       )}
 
