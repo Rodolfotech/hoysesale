@@ -1,6 +1,7 @@
 'use client';
 
 import { apiErrorMessage } from '@/lib/api-error';
+import { useFileDrop } from '@/hooks/useFileDrop';
 import { useId, useState, type ReactNode } from 'react';
 import { Upload } from 'lucide-react';
 import { MEDIA_ACCEPTED_TYPES, MEDIA_MAX_BYTES } from './MediaUploader';
@@ -17,6 +18,8 @@ interface ImagePickerProps {
   allowedTypes?: string[]; // por defecto, MEDIA_ACCEPTED_TYPES
   info?: ReactNode; // texto del botón de información junto al nombre
   requiredSize?: { width: number; height: number }; // medida exacta de la imagen
+  droppable?: boolean; // permite arrastrar el archivo sobre la imagen
+  rounded?: boolean; // vista previa redonda
 }
 
 function imageDimensions(file: File): Promise<{ width: number; height: number }> {
@@ -35,14 +38,14 @@ function imageDimensions(file: File): Promise<{ width: number; height: number }>
   });
 }
 
-const TYPE_NAMES: Record<string, string> = { 'image/jpeg': 'jpeg', 'image/png': 'png', 'image/webp': 'WEBP' };
+const TYPE_NAMES: Record<string, string> = { 'image/jpeg': 'jpeg', 'image/png': 'png', 'image/webp': 'WEBP', 'image/gif': 'gif' };
 
 function formatBytes(bytes: number): string {
   return bytes >= 1024 * 1024 ? `${bytes / (1024 * 1024)} MB` : `${Math.round(bytes / 1024)} KB`;
 }
 
 // Imagen guardada con opción de cambiarla. Sube al elegir el archivo y conserva la URL.
-export function ImagePicker({ label, value, onUpload, onChange, aspect = 'square', hint, maxBytes = MEDIA_MAX_BYTES, allowedTypes = MEDIA_ACCEPTED_TYPES, info, requiredSize }: ImagePickerProps) {
+export function ImagePicker({ label, value, onUpload, onChange, aspect = 'square', hint, maxBytes = MEDIA_MAX_BYTES, allowedTypes = MEDIA_ACCEPTED_TYPES, info, requiredSize, droppable = false, rounded = false }: ImagePickerProps) {
   const inputId = useId();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -75,15 +78,17 @@ export function ImagePicker({ label, value, onUpload, onChange, aspect = 'square
     }
   };
 
+  const { dragging, dropProps } = useFileDrop((files) => { if (!uploading) pick(files[0]); }, droppable);
+
   return (
     <div>
-      <p id={`${inputId}-label`} className="flex items-center gap-1.5 text-xs mb-1" style={{ color: '#1D1D1F' }}>{label}{info && <Popover label={`Información de ${label.toLowerCase()}`}>{info}</Popover>}</p>
-      <div className={`relative w-full ${aspect === 'wide' ? 'max-w-2xl aspect-[3/1]' : 'max-w-[200px] aspect-square'} rounded-xl overflow-hidden`} style={{ border: '1px solid #E4EBFA', backgroundColor: '#F8FAFC' }}>
+      <div id={`${inputId}-label`} className="flex items-center gap-1.5 text-xs mb-1" style={{ color: '#1D1D1F' }}>{label}{info && <Popover label={`Información de ${label.toLowerCase()}`}>{info}</Popover>}</div>
+      <div className={`relative w-full ${aspect === 'wide' ? 'max-w-2xl aspect-[3/1]' : 'max-w-[200px] aspect-square'} ${rounded ? 'rounded-full' : 'rounded-xl'} overflow-hidden`} style={{ border: dragging ? '2px dashed #2563EB' : '1px solid #E4EBFA', backgroundColor: dragging ? '#EFF6FF' : '#F8FAFC' }} {...dropProps}>
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={value} alt={`${label} actual`} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: '#1D1D1F99' }}>Sin imagen</div>
+          <div className="w-full h-full flex items-center justify-center text-xs text-center px-3" style={{ color: '#1D1D1F99' }}>{droppable ? 'Arrastra tu imagen aquí' : 'Sin imagen'}</div>
         )}
       </div>
       <label

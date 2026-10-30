@@ -1,5 +1,6 @@
 'use client';
 
+import { apiErrorMessage } from '@/lib/api-error';
 import { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from '@/lib/router';
 import { authApi } from '../api';
@@ -31,8 +32,8 @@ export default function ResetPassword() {
       setUser(data.user);
       setSuccess(true);
       setTimeout(() => navigate('/profile'), 1500);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Error al restablecer contraseña');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Error al restablecer contraseña'));
     } finally {
       setLoading(false);
     }

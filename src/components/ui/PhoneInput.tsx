@@ -1,6 +1,7 @@
 'use client';
 
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
+import { Popover } from './Popover';
 
 // Teléfono chileno móvil: prefijo fijo +56 9 (bandera de Chile) y 8 dígitos, con un espacio cada 4 (1234 5678).
 // Los dígitos no pueden empezar con 1 ni 2.
@@ -42,18 +43,23 @@ interface PhoneInputProps {
   error?: string;
   required?: boolean;
   id?: string;
+  info?: ReactNode; // texto del botón de información junto al nombre
+  hint?: string; // ayuda bajo el campo
 }
 
-export function PhoneInput({ label, value, onChange, error, required, id }: PhoneInputProps) {
+export function PhoneInput({ label, value, onChange, error, required, id, info, hint = 'Ingresa 8 dígitos. No pueden empezar con 1 ni 2.' }: PhoneInputProps) {
   const autoId = useId();
   const inputId = id ?? autoId;
   const errorId = `${inputId}-error`;
 
   return (
     <div>
-      <label htmlFor={inputId} className="block text-sm mb-1" style={{ color: '#1D1D1F' }}>
-        {label}
-      </label>
+      <div className="flex items-center gap-1.5 mb-1">
+        <label htmlFor={inputId} className="block text-sm" style={{ color: '#1D1D1F' }}>
+          {label}
+        </label>
+        {info && <Popover label={`Información de ${label.toLowerCase()}`}>{info}</Popover>}
+      </div>
       <div
         className="flex items-stretch rounded-xl overflow-hidden light-form"
         style={{ border: error ? '1px solid #DC2626' : undefined }}
@@ -88,7 +94,7 @@ export function PhoneInput({ label, value, onChange, error, required, id }: Phon
           {error}
         </p>
       ) : (
-        <p className="text-xs mt-1" style={{ color: '#1D1D1F99' }}>Ingresa 8 dígitos. No pueden empezar con 1 ni 2.</p>
+        <p className="text-xs mt-1" style={{ color: '#1D1D1F99' }}>{hint}</p>
       )}
     </div>
   );

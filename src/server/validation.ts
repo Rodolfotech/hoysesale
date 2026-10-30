@@ -1,8 +1,10 @@
+import { ADDRESS_LABELS, BUSINESS_DESCRIPTION_MAX, HIDEABLE_TABS, INSTAGRAM_LABELS, LOGO_SHAPES, PHONE_LABELS, SERVICE_TAGS_MAX, SERVICE_TAG_MAX_LENGTH, WEBSITE_LABELS } from '@/lib/business';
 import { z } from 'zod';
 import { COMUNAS } from '@/constants/comunas';
 import { BUSINESS_AMENITIES, BUSINESS_CATEGORIES } from '@/constants/business';
 import { AUDIENCES, ENTRY_TYPES, INTERACTION_TYPES } from './events/filters';
-import { HOURS_ERROR, HOURS_PATTERN } from '@/lib/hours';
+import { hoursProblem } from '@/lib/hours';
+import { ABOUT_MAX_IMAGES } from '@/lib/media-limits';
 
 // Esquemas de entrada de la API (reemplazan los DTO de class-validator del backend NestJS).
 // Los objetos de zod eliminan los campos desconocidos: así no se puede escribir en columnas que el cliente no debe tocar.
@@ -172,12 +174,25 @@ export const BusinessPageSchema = z.object({
   slug: text(20).optional(),
   category: z.enum(BUSINESS_CATEGORIES).nullish(),
   logoUrl: httpsUrl.nullish(),
+  logoShape: z.enum(LOGO_SHAPES).optional(),
   coverUrl: httpsUrl.nullish(),
-  businessDescription: text(2000).nullish(),
-  hours: z.record(z.string(), z.string().regex(HOURS_PATTERN, HOURS_ERROR).or(z.literal(''))).nullish(),
+  businessDescription: text(BUSINESS_DESCRIPTION_MAX).nullish(),
+  hours: z
+    .record(z.string(), z.string())
+    .superRefine((hours, ctx) => {
+      const problem = hoursProblem(hours);
+      if (problem) ctx.addIssue({ code: 'custom', message: problem });
+    })
+    .nullish(),
   amenities: z.array(z.enum(BUSINESS_AMENITIES)).max(BUSINESS_AMENITIES.length).nullish(),
   whatsappReservations: z.string().regex(PHONE_CL, 'El WhatsApp debe tener formato +569XXXXXXXX').nullish(),
   mapUrl: httpsUrl.nullish(),
+  phoneLabel: z.enum(PHONE_LABELS).nullish(),
+  addressLabel: z.enum(ADDRESS_LABELS).nullish(),
+  instagramLabel: z.enum(INSTAGRAM_LABELS).nullish(),
+  websiteLabel: z.enum(WEBSITE_LABELS).nullish(),
+  hiddenTabs: z.array(z.enum(HIDEABLE_TABS)).max(HIDEABLE_TABS.length).optional(),
+  contactInAllTabs: z.boolean().optional(),
 });
 
 // Productos, servicios y destacados: cada tipo usa sus propios campos (name o title).
@@ -187,9 +202,13 @@ export const BusinessItemSchema = z.object({
   description: text(2000).nullish(),
   price: z.number().int().min(0).nullish(),
   imageUrl: anyHttpUrl.nullish(),
+  tags: z.array(text(SERVICE_TAG_MAX_LENGTH)).max(SERVICE_TAGS_MAX, `Puedes agregar hasta ${SERVICE_TAGS_MAX} etiquetas`).nullish(),
   tag: z.enum(['MAS_VENDIDO', 'DEL_DIA', 'REGALO', 'NUEVO']).nullish(),
   sortOrder: z.number().int().nullish(),
 });
+
+// Nuevo orden de las fotos de "Nosotros".
+export const AboutImagesOrderSchema = z.object({ images: z.array(z.string()).max(ABOUT_MAX_IMAGES) });
 
 export const BusinessReviewSchema = z.object({
   rating: z.number().int().min(1, 'La calificación va de 1 a 5').max(5, 'La calificación va de 1 a 5'),

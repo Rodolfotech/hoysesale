@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import BusinessPage from '@/views/BusinessPage';
 import CategoryEvents from '@/views/CategoryEvents';
 import { SITE_URL } from '@/lib/business';
-import { getBusinessPage } from '@/server/services/businesses';
+import { ACCESS_COOKIE, userIdFromToken } from '@/server/auth/session';
+import { getBusinessPage, getBusinessPageFor } from '@/server/services/businesses';
 
 // /<slug>: si es un negocio, su micro-sitio indexable; si no, la página de categoría.
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -15,7 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     `${business.name} en ${business.comuna ?? 'La Araucanía'}: eventos, horarios y cómo llegar.`;
   const image = business.coverUrl || business.logoUrl || undefined;
   return {
-    title: `${business.name}${business.comuna ? ` · ${business.comuna}` : ''} | HoySeSale.cl`,
+    title: business.slug,
     description,
     alternates: { canonical: `${SITE_URL}/${business.slug}` },
     openGraph: { title: business.name, description, url: `${SITE_URL}/${business.slug}`, images: image ? [image] : [] },
@@ -24,7 +26,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function Route({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const business = await getBusinessPage(slug);
+  const viewerId = userIdFromToken((await cookies()).get(ACCESS_COOKIE)?.value);
+  const business = await getBusinessPageFor(slug, viewerId);
   if (business) return <BusinessPage business={business} />;
   return <CategoryEvents />;
 }

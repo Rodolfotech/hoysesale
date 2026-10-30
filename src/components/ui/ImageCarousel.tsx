@@ -6,10 +6,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 interface ImageCarouselProps {
   images: string[];
   alt: string;
+  aspectClass?: string; // proporción de la imagen
 }
 
 // Carrusel de fotos: con una sola imagen no muestra flechas; con varias, las flechas se desactivan en los extremos.
-export function ImageCarousel({ images, alt }: ImageCarouselProps) {
+export function ImageCarousel({ images, alt, aspectClass = 'aspect-[4/3]' }: ImageCarouselProps) {
   const [index, setIndex] = useState(0);
   if (images.length === 0) return null;
 
@@ -18,7 +19,7 @@ export function ImageCarousel({ images, alt }: ImageCarouselProps) {
 
   return (
     <div className="relative">
-      <div className="overflow-hidden rounded-2xl aspect-[4/3] bg-brand-neutral-2">
+      <div className={`overflow-hidden rounded-2xl ${aspectClass} bg-brand-neutral-2`}>
         <img src={images[index]} alt={`${alt} (${index + 1} de ${images.length})`} className="w-full h-full object-cover" />
       </div>
       {images.length > 1 && (

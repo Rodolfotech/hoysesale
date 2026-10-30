@@ -44,6 +44,21 @@ function tokenFromRequest(req: NextRequest | Request): string | null {
   return null;
 }
 
+// Id de la sesión sin consultar la base. Sirve para decidir qué mostrar, no para autorizar cambios.
+export function userIdFromToken(token: string | null | undefined): string | null {
+  if (!token) return null;
+  try {
+    const { sub, type } = verifyToken(token);
+    return sub && type !== 'reset' ? String(sub) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function sessionUserId(req: NextRequest | Request): string | null {
+  return userIdFromToken(tokenFromRequest(req));
+}
+
 // Usuario de la sesión, o null si no hay token válido o el usuario ya no existe.
 export async function getSessionUser(req: NextRequest | Request) {
   const token = tokenFromRequest(req);
@@ -54,7 +69,8 @@ export async function getSessionUser(req: NextRequest | Request) {
   } catch {
     return null;
   }
-  if (!payload.sub) return null;
+  // Un token de recuperación de contraseña no es una sesión.
+  if (!payload.sub || payload.type === 'reset') return null;
   return findUserById(String(payload.sub));
 }
 

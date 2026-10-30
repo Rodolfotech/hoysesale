@@ -1,5 +1,6 @@
 'use client';
 
+import { apiErrorMessage } from '@/lib/api-error';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -39,9 +40,8 @@ export function ReviewsSection({ slug, reviews, rating, reviewCount }: ReviewsSe
       setSent(true);
       setComment('');
       router.refresh();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message;
-      setError(Array.isArray(msg) ? msg.join(', ') : msg || 'No se pudo enviar la reseña');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'No se pudo enviar la reseña'));
     } finally {
       setSaving(false);
     }

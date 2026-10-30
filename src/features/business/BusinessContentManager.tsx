@@ -1,13 +1,16 @@
 'use client';
 
+import { apiErrorMessage } from '@/lib/api-error';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { businessApi, mediaApi } from '../../api';
 import { Modal } from '../../components/ui/Modal';
 import { FormInput } from '../../components/ui/FormInput';
+import { TagInput } from '../../components/ui/TagInput';
 import { ImagePicker } from '../media/ImagePicker';
+import { OfferImagePicker } from './OfferImagePicker';
 import { TAG_LABELS, formatCLP } from './format';
-import type { BusinessHighlight, BusinessProduct, BusinessService } from '@/lib/business';
+import { SERVICE_TAGS_MAX, SERVICE_TAG_MAX_LENGTH, type BusinessHighlight, type BusinessProduct, type BusinessService } from '@/lib/business';
 
 type ItemType = 'products' | 'services' | 'highlights';
 
@@ -29,11 +32,12 @@ export function BusinessContentManager({ open, onClose, products, services, high
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [tag, setTag] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   const [imageUrl, setImageUrl] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const reset = () => { setName(''); setDescription(''); setPrice(''); setTag(''); setImageUrl(''); setError(''); };
+  const reset = () => { setName(''); setDescription(''); setPrice(''); setTag(''); setTags([]); setImageUrl(''); setError(''); };
 
   const add = async () => {
     setBusy(true);
@@ -42,14 +46,13 @@ export function BusinessContentManager({ open, onClose, products, services, high
       const data: Record<string, unknown> = type === 'products'
         ? { name, description: description || undefined, price: price ? Number(price) : undefined, tag: tag || undefined, imageUrl: imageUrl || undefined }
         : type === 'services'
-          ? { title: name, description: description || undefined }
+          ? { title: name, description: description || undefined, imageUrl: imageUrl || undefined, tags }
           : { title: name, imageUrl };
       await businessApi.addItem(type, data);
       reset();
       router.refresh();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message;
-      setError(Array.isArray(msg) ? msg.join(', ') : msg || 'No se pudo guardar');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'No se pudo guardar'));
     } finally {
       setBusy(false);
     }
@@ -121,9 +124,10 @@ export function BusinessContentManager({ open, onClose, products, services, high
               </div>
             </div>
           )}
-          {type !== 'services' && (
-            <ImagePicker label={type === 'highlights' ? 'Imagen (obligatoria)' : 'Imagen'} value={imageUrl || null} onChange={setImageUrl} onUpload={async (f) => (await mediaApi.uploadTemp(f)).data.url} />
-          )}
+          {type === 'services' && <TagInput label="Etiquetas" value={tags} onChange={setTags} max={SERVICE_TAGS_MAX} maxLength={SERVICE_TAG_MAX_LENGTH} />}
+          {type === 'highlights'
+            ? <ImagePicker label="Imagen (obligatoria)" value={imageUrl || null} onChange={setImageUrl} onUpload={async (f) => (await mediaApi.uploadTemp(f)).data.url} />
+            : <OfferImagePicker type={type} label="Imagen" value={imageUrl || null} onChange={setImageUrl} />}
           {error && <p role="alert" className="text-xs" style={{ color: '#DC2626' }}>{error}</p>}
           <button type="button" onClick={add} disabled={busy || !name.trim() || (type === 'highlights' && !imageUrl)} className="px-5 py-2.5 rounded-xl text-sm font-medium text-white cursor-pointer disabled:opacity-50" style={{ backgroundColor: '#2563EB' }}>
             {busy ? 'Guardando...' : 'Agregar'}

@@ -53,7 +53,7 @@ export default function DataDeletion() {
               <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium" style={{ backgroundColor: '#E4EBFA', color: '#2563EB' }}>
                 contacto@hoysesale.cl
               </div>
-              <p className="mt-3">Incluye en el asunto: <strong style={{ color: '#1D1D1F' }}>"Solicitud de eliminación de datos"</strong> y tu correo registrado en la plataforma.</p>
+              <p className="mt-3">Incluye en el asunto: <strong style={{ color: '#1D1D1F' }}>&ldquo;Solicitud de eliminación de datos&rdquo;</strong> y tu correo registrado en la plataforma.</p>
               <p className="mt-2">Procesaremos tu solicitud en un plazo máximo de <strong style={{ color: '#1D1D1F' }}>30 días hábiles</strong> y te confirmaremos por correo cuando esté completada.</p>
             </section>
 

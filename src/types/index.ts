@@ -32,7 +32,7 @@ export interface User {
   website?: string;
   companyRut?: string;
   companyGiro?: string;
-  companyPhone?: string;
+  companyPhone?: string | null;
   companyAddress?: string | null;
   city?: string;
   adminFirstName?: string;

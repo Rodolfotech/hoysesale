@@ -13,6 +13,7 @@ export function usePersistentState<T>(key: string, initial: T): [T, Dispatch<Set
   useEffect(() => {
     try {
       const raw = window.sessionStorage.getItem(key);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sessionStorage solo existe en el navegador: se lee después de montar
       if (raw !== null) setValue(JSON.parse(raw) as T);
     } catch {
       // Storage bloqueado o JSON inválido: se usa el valor inicial.

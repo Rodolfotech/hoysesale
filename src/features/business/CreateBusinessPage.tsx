@@ -22,6 +22,8 @@ export function CreateBusinessPage({ user, onUpdated }: CreateBusinessPageProps)
     const { data } = await businessApi.createPage(payload);
     onUpdated(data);
     setOpen(false);
+    // Al publicar, se abre la página del negocio en hoysesale.cl/<slug>.
+    window.location.href = `/${data.slug ?? payload.slug}`;
   };
 
   return (

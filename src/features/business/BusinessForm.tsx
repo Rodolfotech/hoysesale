@@ -4,15 +4,20 @@ import { usePersistentState } from '@/hooks/usePersistentState';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { PhoneInput, phoneDigitsFrom } from '@/components/ui/PhoneInput';
-import { BusinessHours } from './BusinessHours';
+import { Popover } from '@/components/ui/Popover';
+import { EditableField } from '@/components/ui/EditableField';
+import { UnderlineTabs } from '@/components/ui/UnderlineTabs';
+import { BusinessScheduleForm } from './BusinessScheduleForm';
 import { OfferItems, type OfferItem } from './OfferItems';
 import { AboutImages } from './AboutImages';
-import { COVER_MAX_BYTES, COVER_SIZE, LOGO_MAX_BYTES, WEBP_TYPES } from '@/lib/media-limits';
+import { useAboutImages } from './useAboutImages';
+import { BusinessDescriptionField } from './BusinessDescriptionField';
+import { BusinessImagePicker } from './BusinessImagePicker';
 import { WebsiteInput, websiteError, websiteRestFrom, websiteValueFrom } from '@/components/ui/WebsiteInput';
 import { InstagramInput, instagramHandleFrom, instagramValueFrom } from '@/components/ui/InstagramInput';
 import { FormInput } from '../../components/ui/FormInput';
-import { ImagePicker } from '../media/ImagePicker';
 import { apiErrorMessage } from '@/lib/api-error';
+import { cleanBusinessHours } from '@/lib/hours';
 import { businessApi } from '../../api';
 import { COMUNAS } from '../../constants/comunas';
 import { BUSINESS_CATEGORIES, BUSINESS_AMENITIES, AMENITY_LABELS } from '../../constants/business';
@@ -70,8 +75,9 @@ export interface BusinessFormInitial {
 export interface BusinessFormPayload {
   slug?: string;
   website: string | null;
-  whatsappReservations: string | null;
-  mapUrl: string | null;
+  // En la edición solo se envían si cambiaron: undefined no toca el dato guardado.
+  whatsappReservations?: string | null;
+  mapUrl?: string | null;
   businessDescription: string | null;
   amenities: string[];
   hours: Record<string, string>;
@@ -86,7 +92,12 @@ interface BusinessFormProps {
 }
 
 // Formulario del micro-sitio. Lo usan la creación y la edición (reutilizable, sin lógica de página).
-const TAB_LABELS = { info: 'Información del negocio', contact: 'Encuéntranos', hours: 'Horario', offer: 'Oferta', about: 'Nosotros', image: 'Identidad' } as const;
+const TABS = ['contact', 'hours', 'offer', 'about', 'image'] as const;
+const OFFER_TABS = ['products', 'services'] as const;
+const OFFER_TAB_LABELS = { products: 'Productos', services: 'Servicios' } as const;
+const TAB_LABELS = { contact: 'Encuéntranos', hours: 'Horario', offer: 'Oferta', about: 'Nosotros', image: 'Identidad' } as const;
+
+const whatsappValue = (digits: string) => (digits ? `+569${digits}` : null);
 
 export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }: BusinessFormProps) {
   const draftKey = `draft:business:${mode}:${initial.slug ?? 'new'}`;
@@ -96,6 +107,8 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
   // Resultado de la última revisión de URL. Solo se usa si corresponde a la URL actual.
   const [slugResult, setSlugResult] = useState<{ slug: string; available: boolean; message?: string; suggestion?: string } | null>(null);
   const slugStatus: { available: boolean | null; message?: string; suggestion?: string } = slugResult && slugResult.slug === slug ? slugResult : { available: null };
+  // Una URL antigua que no cambia no impide guardar: el servidor tampoco la revalida.
+  const slugBlocked = slugStatus.available === false && !(mode === 'edit' && slug === initial.slug);
 
   // Revisa la URL 400 ms después de la última tecla.
   useEffect(() => {
@@ -113,15 +126,21 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
   const [whatsappTouched, setWhatsappTouched] = useState(!!initial.whatsappReservations);
   const [whatsapp, setWhatsapp] = usePersistentState(`${draftKey}:whatsapp`, phoneDigitsFrom(initial.whatsappReservations) || phoneDigitsFrom(initial.companyPhone));
   const [mapUrl, setMapUrl] = usePersistentState(`${draftKey}:mapUrl`, initial.mapUrl ?? '');
+  // Al editar, estos dos campos no usan borrador: bloqueados deben mostrar siempre lo guardado.
+  const savedWhatsapp = phoneDigitsFrom(initial.whatsappReservations) || phoneDigitsFrom(initial.companyPhone);
+  const savedMapUrl = initial.mapUrl ?? '';
+  const [editWhatsapp, setEditWhatsapp] = useState(savedWhatsapp);
+  const [editMapUrl, setEditMapUrl] = useState(savedMapUrl);
   const [description, setDescription] = usePersistentState(`${draftKey}:description`, initial.businessDescription ?? '');
   const [amenities, setAmenities] = usePersistentState<string[]>(`${draftKey}:amenities`, initial.amenities ?? []);
   const [hours, setHours] = usePersistentState<Record<string, string>>(`${draftKey}:hours`, initial.hours ?? {});
   const [logoUrl, setLogoUrl] = usePersistentState<string | null>(`${draftKey}:logoUrl`, initial.logoUrl ?? null);
   const [coverUrl, setCoverUrl] = usePersistentState<string | null>(`${draftKey}:coverUrl`, initial.coverUrl ?? null);
   const [products, setProducts] = useState<OfferItem[]>(initial.products ?? []);
-  const [aboutImages, setAboutImages] = useState<string[]>(initial.aboutImages ?? []);
+  const about = useAboutImages(initial.aboutImages ?? []);
   const [services, setServices] = useState<OfferItem[]>(initial.services ?? []);
-  const [tab, setTab] = useState<'info' | 'contact' | 'hours' | 'offer' | 'about' | 'image'>('info');
+  const [tab, setTab] = useState<(typeof TABS)[number]>('contact');
+  const [offerTab, setOfferTab] = useState<(typeof OFFER_TABS)[number]>('products');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -131,18 +150,22 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
   const submit = async () => {
     setSaving(true);
     setError('');
-    const cleanHours = Object.fromEntries(Object.entries(hours).filter(([, v]) => v.trim()));
     try {
       const clearAll = () => ['slug','name','comuna','category','street','number','phone','instagram','website','whatsapp','mapUrl','description','amenities','hours','logoUrl','coverUrl'].forEach((k) => window.sessionStorage.removeItem(`${draftKey}:${k}`));
+      await about.save();
       await onSubmit(
         {
           slug: slug.trim(),
           website: websiteValueFrom(website) ?? null,
-          whatsappReservations: whatsapp ? `+569${whatsapp}` : null,
-          mapUrl: mapUrl.trim() || null,
+          ...(mode === 'create'
+            ? { whatsappReservations: whatsappValue(whatsapp), mapUrl: mapUrl.trim() || null }
+            : {
+                ...(editWhatsapp !== savedWhatsapp && { whatsappReservations: whatsappValue(editWhatsapp) }),
+                ...(editMapUrl !== savedMapUrl && { mapUrl: editMapUrl.trim() || null }),
+              }),
           businessDescription: description.trim() || null,
           amenities,
-          hours: cleanHours,
+          hours: cleanBusinessHours(hours),
         },
       );
       clearAll();
@@ -153,35 +176,41 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
     }
   };
 
+  const whatsappField = (value: string, onChange: (digits: string) => void) => (
+    <>
+      <PhoneInput label="WhatsApp del botón Contactar" value={value} onChange={onChange} />
+      <p className="text-xs mt-1" style={{ color: '#1D1D1F99' }}>También se usa para reservas y pedidos. Si lo dejas vacío, se usa el teléfono.</p>
+    </>
+  );
+
+  const mapUrlField = (value: string, onChange: (url: string) => void) => (
+    <>
+      <FormInput label="Enlace del botón Cómo llegar" value={value} onChange={(e) => onChange(e.target.value)} placeholder="https://maps.google.com/..." />
+      <p className="text-xs mt-1" style={{ color: '#1D1D1F99' }}>Google Maps o Waze. Si lo dejas vacío, se usa la dirección exacta.</p>
+    </>
+  );
+
   const label = 'block text-xs mb-1';
 
   return (
     <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
-      <div role="tablist" className="flex flex-wrap gap-x-2 gap-y-1" style={{ borderBottom: '1px solid #E4EBFA' }}>
-        {(['info', 'contact', 'hours', 'offer', 'about', 'image'] as const).map((key) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={tab === key}
-            onClick={() => setTab(key)}
-            className="px-4 py-2 text-sm font-medium cursor-pointer"
-            style={{ borderBottom: tab === key ? '2px solid #2563EB' : '2px solid transparent', marginBottom: '-1px', color: tab === key ? '#2563EB' : '#1D1D1F99' }}
-          >
-            {TAB_LABELS[key]}
-          </button>
-        ))}
-      </div>
+      <UnderlineTabs tabs={TABS} labels={TAB_LABELS} active={tab} onChange={setTab} />
 
-      {tab === 'info' && (
+      {tab === 'contact' && (
       <div className="space-y-5">
       <div>
-        <p className={label} style={{ color: '#1D1D1F99' }}>Dirección de tu página</p>
+        <div className="flex items-center gap-1.5">
+          <p className={label} style={{ color: '#1D1D1F99' }}>Dirección de tu página</p>
+          <Popover label="Información de la dirección de tu página">
+            <p>La URL solo puede tener letras minúsculas y números, hasta 20 caracteres.</p>
+          </Popover>
+        </div>
         <div className="flex items-center gap-1 text-sm" style={{ color: '#1D1D1F99' }}>
           <span>hoysesale.cl/</span>
           <input value={slug} onChange={(e) => { setSlugTouched(true); setSlug(slugifyName(e.target.value)); }} aria-label="Dirección de la página" className="flex-1 px-3 py-2 rounded-xl text-sm light-form" style={{ color: '#1D1D1F' }} />
         </div>
-        {slugStatus.available === false && (
+        {/* Solo se muestra cuando la URL ya existe (tiene sugerencia). Los errores de formato no se muestran en rojo. */}
+        {slugStatus.available === false && slugStatus.suggestion && (
           <p role="alert" className="text-xs mt-1" style={{ color: '#DC2626' }}>
             {slugStatus.message}
             {slugStatus.suggestion && (
@@ -197,37 +226,39 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
         {mode === 'create' && <p className="text-xs mt-1" style={{ color: '#1D1D1F99' }}>Puedes cambiarla después desde Editar.</p>}
       </div>
 
-      </div>
-      )}
-
-      {tab === 'contact' && (
-      <div className="space-y-5">
       <WebsiteInput label="Sitio web" value={website} onChange={setWebsite} error={websiteError(website)} />
 
       <fieldset className="rounded-xl p-4 space-y-3" style={{ border: '1px solid #E4EBFA' }}>
         <legend className="px-1 text-sm font-medium" style={{ color: '#1D1D1F' }}>Botones de la barra inferior</legend>
-        <div>
-          <PhoneInput label="WhatsApp del botón Contactar" value={whatsapp} onChange={(digits) => { setWhatsapp(digits); setWhatsappTouched(true); }} />
-          <p className="text-xs mt-1" style={{ color: '#1D1D1F99' }}>También se usa para reservas y pedidos. Si lo dejas vacío, se usa el teléfono.</p>
-        </div>
-        <div>
-          <FormInput label="Enlace del botón Cómo llegar" value={mapUrl} onChange={(e) => setMapUrl(e.target.value)} placeholder="https://maps.google.com/..." />
-          <p className="text-xs mt-1" style={{ color: '#1D1D1F99' }}>Google Maps o Waze. Si lo dejas vacío, se usa la dirección exacta.</p>
-        </div>
+        {mode === 'edit' ? (
+          <>
+            <EditableField label="WhatsApp" onCancel={() => setEditWhatsapp(savedWhatsapp)}>
+              {whatsappField(editWhatsapp, setEditWhatsapp)}
+            </EditableField>
+            <EditableField label="Cómo llegar" onCancel={() => setEditMapUrl(savedMapUrl)}>
+              {mapUrlField(editMapUrl, setEditMapUrl)}
+            </EditableField>
+          </>
+        ) : (
+          <>
+            <div>{whatsappField(whatsapp, (digits) => { setWhatsapp(digits); setWhatsappTouched(true); })}</div>
+            <div>{mapUrlField(mapUrl, setMapUrl)}</div>
+          </>
+        )}
       </fieldset>
-      </div>
-      )}
-
-      {tab === 'info' && (
-      <div className="space-y-5">
-
       </div>
       )}
 
       {tab === 'offer' && (
       <div className="space-y-5">
-      <OfferItems type="products" title="Productos" items={products} onChange={setProducts} />
-      <OfferItems type="services" title="Servicios" items={services} onChange={setServices} />
+      <UnderlineTabs tabs={OFFER_TABS} labels={OFFER_TAB_LABELS} active={offerTab} onChange={setOfferTab} ariaLabel="Oferta" />
+      {/* Con hidden, cambiar de pestaña no borra lo que se está escribiendo. */}
+      <div hidden={offerTab !== 'products'}>
+        <OfferItems type="products" items={products} onChange={setProducts} />
+      </div>
+      <div hidden={offerTab !== 'services'}>
+        <OfferItems type="services" items={services} onChange={setServices} />
+      </div>
 
       <div className="space-y-3">
         <p className="text-sm font-semibold" style={{ color: '#1D1D1F' }}>Eventos</p>
@@ -251,17 +282,8 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
 
       {tab === 'about' && (
       <div className="space-y-5">
-      <AboutImages images={aboutImages} onChange={setAboutImages} />
-      <div>
-        <label className={label} style={{ color: '#1D1D1F' }}>Descripción (2 a 4 párrafos; separa los párrafos con una línea en blanco)</label>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} maxLength={2000} className="w-full px-3 py-2 rounded-xl text-sm light-form resize-none" />
-      </div>
-      </div>
-      )}
-
-      {tab === 'info' && (
-      <div className="space-y-5">
-
+      <AboutImages items={about.items} onChange={about.setItems} />
+      <BusinessDescriptionField value={description} onChange={setDescription} />
       </div>
       )}
 
@@ -269,35 +291,15 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
       <div className="space-y-5">
       <div>
         <p className={label} style={{ color: '#1D1D1F' }}>Horarios</p>
-        <BusinessHours hours={hours} onChange={setHours} />
+        <BusinessScheduleForm hours={hours} onChange={setHours} />
       </div>
-      </div>
-      )}
-
-      {tab === 'info' && (
-      <div className="space-y-5">
-
       </div>
       )}
 
       {tab === 'image' && (
       <div className="grid grid-cols-2 gap-4">
-        <ImagePicker
-          label="Logo"
-          value={logoUrl}
-          onChange={setLogoUrl}
-          onUpload={async (f) => (await businessApi.uploadImage('logo', f)).data.logoUrl as string}
-          hint="Máximo 10 KB · WEBP"
-          maxBytes={LOGO_MAX_BYTES}
-          allowedTypes={WEBP_TYPES}
-          info={<><p className="font-semibold mb-1">Tamaño y formato del logo</p><p>Tamaño recomendado: <b>400 × 400 px</b>.</p><p>Formato: <b>WEBP</b>.</p><p>Peso máximo: <b>10 KB</b>.</p></>}
-        />
-        <ImagePicker label="Portada" value={coverUrl} onChange={setCoverUrl} onUpload={async (f) => (await businessApi.uploadImage('cover', f)).data.coverUrl as string} aspect="wide"
-          hint="1200 × 400 px · Máximo 90 KB · WEBP"
-          maxBytes={COVER_MAX_BYTES}
-          requiredSize={COVER_SIZE}
-          info={<><p className="font-semibold mb-1">Medida y peso de la portada</p><p>Medida: <b>1200 × 400 px</b>.</p><p>Peso máximo: <b>90 KB</b>.</p><p>Formato: <b>WEBP</b>.</p></>}
-        />
+        <BusinessImagePicker kind="logo" value={logoUrl} onChange={setLogoUrl} />
+        <BusinessImagePicker kind="cover" value={coverUrl} onChange={setCoverUrl} />
       </div>
 
       )}
@@ -312,7 +314,7 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
         <button
           type="button"
           onClick={submit}
-          disabled={saving || !slug || slugStatus.available === false || !!websiteError(website)}
+          disabled={saving || !slug || slugBlocked || !!websiteError(website)}
           className="px-6 py-2.5 rounded-xl text-sm font-medium text-white cursor-pointer disabled:opacity-50"
           style={{ backgroundColor: '#2563EB' }}
         >

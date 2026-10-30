@@ -1,61 +1,107 @@
 'use client';
 
 import { useState } from 'react';
-import { apiErrorMessage } from '@/lib/api-error';
-import { businessApi } from '../../api';
-import { ABOUT_MAX_IMAGES } from '@/lib/media-limits';
+import { Popover } from '@/components/ui/Popover';
+import { useFileDrop } from '@/hooks/useFileDrop';
+import { ABOUT_MAX_IMAGES, MAX_IMAGE_BYTES } from '@/lib/media-limits';
 
-// Fotos del negocio para "Nosotros" (hasta 3). Cada cambio se guarda al momento, igual que productos y servicios.
-export function AboutImages({ images, onChange }: { images: string[]; onChange: (images: string[]) => void }) {
+const ABOUT_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+// Foto de "Nosotros". Con file, aún no está guardada: url es solo la vista previa.
+export interface AboutItem {
+  url: string;
+  file?: File;
+}
+
+interface AboutImagesProps {
+  items: AboutItem[];
+  onChange: (items: AboutItem[]) => void;
+}
+
+// Fotos del negocio para "Nosotros" (hasta 3). Los cambios quedan pendientes hasta presionar Guardar en el formulario.
+export function AboutImages({ items, onChange }: AboutImagesProps) {
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [targetIndex, setTargetIndex] = useState<number | null>(null);
 
-  const upload = async (file: File | undefined) => {
-    if (!file) return;
-    setBusy(true);
-    setError('');
-    try {
-      const { data } = await businessApi.uploadAboutImage(file);
-      onChange(data.aboutImages ?? []);
-    } catch (err) {
-      setError(apiErrorMessage(err, 'No se pudo subir la imagen'));
-    } finally {
-      setBusy(false);
+  // Al arrastrar no aplica el filtro del selector, por eso se revisa cada archivo.
+  const add = (files: File[]) => {
+    if (files.length === 0) return;
+    // El máximo se explica en el popover: lo que sobra simplemente no se toma.
+    const free = ABOUT_MAX_IMAGES - items.length;
+    if (free <= 0) return;
+    let problem = '';
+    const added: AboutItem[] = [];
+    for (const file of files.slice(0, free)) {
+      if (!ABOUT_TYPES.includes(file.type)) problem = 'Formato no permitido (usa JPG, PNG o WEBP)';
+      else if (file.size > MAX_IMAGE_BYTES) problem = 'La imagen es muy pesada. Tamaño máximo 4 MB';
+      else added.push({ url: URL.createObjectURL(file), file });
     }
+    setError(problem);
+    onChange([...items, ...added]);
   };
 
-  const remove = async (url: string) => {
-    setError('');
-    try {
-      const { data } = await businessApi.deleteAboutImage(url);
-      onChange(data.aboutImages ?? []);
-    } catch {
-      setError('No se pudo quitar la imagen');
-    }
+  const { dragging, dropProps } = useFileDrop(add);
+
+  const endDrag = () => {
+    setDraggedIndex(null);
+    setTargetIndex(null);
   };
 
-  const canUpload = images.length < ABOUT_MAX_IMAGES && !busy;
+  const move = (from: number, to: number) => {
+    const next = [...items];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    onChange(next);
+  };
+
+  const remove = (item: AboutItem) => {
+    setError('');
+    if (item.file) URL.revokeObjectURL(item.url);
+    onChange(items.filter((current) => current !== item));
+  };
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm font-semibold" style={{ color: '#1D1D1F' }}>Fotos del negocio</p>
-      <p className="text-xs" style={{ color: '#1D1D1F99' }}>Hasta {ABOUT_MAX_IMAGES} imágenes · JPG, PNG o WEBP · máximo 4 MB</p>
-      {images.length > 0 && (
+    <div className="space-y-3" {...dropProps}>
+      <div className="flex items-center gap-1.5">
+        <p className="text-sm font-semibold" style={{ color: '#1D1D1F' }}>Fotos del negocio</p>
+        <Popover label="Información de las fotos del negocio">
+          <p className="font-semibold mb-1">Fotos del negocio</p>
+          <p>Puedes subir hasta <b>{ABOUT_MAX_IMAGES} imágenes</b>.</p>
+          <p>Formato: <b>JPG</b>, <b>PNG</b> o <b>WEBP</b>.</p>
+          <p>Peso máximo: <b>4 MB</b>.</p>
+          <p>Se publican al presionar <b>Guardar</b>.</p>
+        </Popover>
+      </div>
+      {items.length > 0 && (
         <ul className="grid grid-cols-3 gap-3">
-          {images.map((url) => (
-            <li key={url} className="space-y-1">
-              <div className="aspect-[4/3] overflow-hidden rounded-xl" style={{ border: '1px solid #E4EBFA' }}>
-                <img src={url} alt="Foto del negocio" className="w-full h-full object-cover" />
+          {items.map((item, index) => (
+            <li
+              key={item.url}
+              draggable
+              onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(index)); setDraggedIndex(index); }}
+              onDragOver={(e) => { if (draggedIndex !== null) { e.preventDefault(); setTargetIndex(index); } }}
+              onDrop={(e) => { if (draggedIndex !== null) { e.preventDefault(); move(draggedIndex, index); endDrag(); } }}
+              onDragEnd={endDrag}
+              className="space-y-1 cursor-move"
+              style={{ opacity: draggedIndex === index ? 0.5 : 1 }}
+            >
+              <div className="aspect-[4/3] overflow-hidden rounded-xl" style={{ border: `${targetIndex === index ? '2px solid #2563EB' : '1px solid #E4EBFA'}` }}>
+                <img src={item.url} alt="Foto del negocio" draggable={false} className="w-full h-full object-cover" />
               </div>
-              <button type="button" onClick={() => remove(url)} className="text-xs underline cursor-pointer" style={{ color: '#DC2626' }}>Quitar</button>
+              <button type="button" onClick={() => remove(item)} className="text-xs underline cursor-pointer" style={{ color: '#DC2626' }}>Quitar</button>
             </li>
           ))}
         </ul>
       )}
-      {canUpload && (
-        <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer" style={{ border: '1px solid #2563EB', color: '#2563EB' }}>
-          {busy ? 'Subiendo...' : 'Subir foto'}
-          <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => { upload(e.target.files?.[0]); e.target.value = ''; }} />
+      {items.length > 1 && <p className="text-xs" style={{ color: '#1D1D1F99' }}>Arrastra las fotos para cambiar el orden. La primera es la que se ve al entrar.</p>}
+      {items.length < ABOUT_MAX_IMAGES && (
+        <label
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer"
+          style={{ border: `1px ${dragging ? 'dashed' : 'solid'} #2563EB`, color: '#2563EB', backgroundColor: dragging ? '#EFF6FF' : undefined }}
+        >
+          Subir foto o arrastrar aquí
+          <input type="file" accept={ABOUT_TYPES.join(',')} className="sr-only" onChange={(e) => { add(Array.from(e.target.files ?? [])); e.target.value = ''; }} />
         </label>
       )}
       {error && <p role="alert" className="text-xs" style={{ color: '#DC2626' }}>{error}</p>}

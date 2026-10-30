@@ -4,6 +4,7 @@ import { forbidden, notFound, conflict } from '../http';
 import { PUBLIC_USER_SELECT } from '../users/public-user';
 import { eventSlug } from '../events/slug';
 import { matchesTimeSlot, type InteractionType, type TimeSlot } from '../events/filters';
+import { businessDayStart } from '@/lib/hours';
 import type { z } from 'zod';
 import type { CreateEventSchema, UpdateEventSchema } from '../validation';
 
@@ -28,6 +29,12 @@ export function publicationWindow(now: Date) {
   };
 }
 
+// Eventos vigentes: publicados y cuya fecha no pasó. Los eventos no tienen hora de término,
+// así que cada uno sigue visible hasta que termina su día en Chile.
+export function activeEvents(now: Date) {
+  return { ...publicationWindow(now), date: { gte: businessDayStart(now) } };
+}
+
 export async function listEvents(city: string | undefined, page: number | undefined, limit: number | undefined, filters: EventListFilters) {
   const now = new Date();
   const safePage = page !== undefined && Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
@@ -35,7 +42,7 @@ export async function listEvents(city: string | undefined, page: number | undefi
     limit !== undefined && Number.isFinite(limit) && limit >= 1 ? Math.min(Math.floor(limit), MAX_PAGE_SIZE) : DEFAULT_PAGE_SIZE;
   const skip = (safePage - 1) * safeLimit;
 
-  const where: Record<string, unknown> = { ...publicationWindow(now) };
+  const where: Record<string, unknown> = activeEvents(now);
   if (city) where.city = { equals: city, mode: 'insensitive' };
   if (filters.free) where.entryType = 'GRATIS';
   if (filters.audience) where.audience = filters.audience;

@@ -42,6 +42,7 @@ export default function EventDetail() {
 
   useEffect(() => {
     if (slug) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- marca el inicio de la carga de una petición
       setLoading(true);
       eventsApi.getBySlug(slug).then(({ data }) => {
         setEvent(data);

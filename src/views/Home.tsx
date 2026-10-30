@@ -24,6 +24,7 @@ export default function Home() {
   useEffect(() => {
     const cachedFeatured = getCached<Event[]>(FEATURED_PARAMS);
     const cachedUpcoming = getCached<Event[]>(UPCOMING_PARAMS);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- muestra primero lo que hay en caché
     if (cachedFeatured) setFeatured(cachedFeatured);
     if (cachedUpcoming) setUpcoming(cachedUpcoming);
     if (cachedFeatured && cachedUpcoming) setLoading(false);

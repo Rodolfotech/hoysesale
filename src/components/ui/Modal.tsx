@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -9,6 +9,9 @@ interface ModalProps {
   children: React.ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl';
 }
+
+// Ventanas abiertas, de abajo hacia arriba.
+const openModals: object[] = [];
 
 const maxWidthMap = {
   sm:  'max-w-sm',
@@ -20,16 +23,23 @@ const maxWidthMap = {
 };
 
 export function Modal({ isOpen, onClose, children, maxWidth = '4xl' }: ModalProps) {
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
   useEffect(() => {
     if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const entry = {};
+    openModals.push(entry);
+    // Con una ventana sobre otra, Escape cierra solo la de arriba.
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && openModals[openModals.length - 1] === entry) onCloseRef.current(); };
     document.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
     return () => {
+      openModals.splice(openModals.indexOf(entry), 1);
       document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
+      if (openModals.length === 0) document.body.style.overflow = '';
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

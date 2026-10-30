@@ -47,6 +47,7 @@ export default function CategoryEvents() {
     : `Eventos disponibles en ${displayName}.`;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- marca el inicio de la carga de una petición
     setLoading(true);
     eventsApi.getAll({ limit: 100 })
       .then(({ data: { data } }) => {

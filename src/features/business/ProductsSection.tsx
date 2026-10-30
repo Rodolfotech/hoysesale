@@ -1,53 +1,49 @@
 'use client';
 
-import { useState } from 'react';
+import type { ReactNode } from 'react';
+import { usePagedItems } from '@/hooks/usePagedItems';
 import type { BusinessProduct } from '@/lib/business';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { Chip, ChipGroup } from '../../components/ui/Chip';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { Pagination } from '../../components/ui/Pagination';
 import { formatCLP, TAG_LABELS, whatsappLink } from './format';
-
-const FILTERS = [{ key: 'ALL', label: 'Todos' }, ...Object.entries(TAG_LABELS).map(([key, label]) => ({ key, label }))];
+import { OFFER_ITEMS_PER_PAGE, productToOffer } from './offer';
+import { OfferItemActions } from './OfferItemActions';
+import { useIsOwner } from './useIsOwner';
 
 interface ProductsSectionProps {
+  slug: string;
+  toolbar?: ReactNode; // controles bajo el título
   products: BusinessProduct[];
   businessName: string;
   whatsapp: string | null;
 }
 
-// Productos con filtros por etiqueta en una fila horizontal. "+ Agregar" abre un pedido por WhatsApp.
-export function ProductsSection({ products, businessName, whatsapp }: ProductsSectionProps) {
-  const [filter, setFilter] = useState('ALL');
-  const visible = filter === 'ALL' ? products : products.filter((p) => p.tag === filter);
+// Productos en tarjetas, con la misma cuadrícula de servicios. "+ Agregar" abre un pedido por WhatsApp.
+export function ProductsSection({ slug, toolbar, products, businessName, whatsapp }: ProductsSectionProps) {
+  const isOwner = useIsOwner(slug);
+  const { visible, currentPage, totalPages, setPage } = usePagedItems(products, OFFER_ITEMS_PER_PAGE);
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-        <h2 id="productos-titulo" className="text-2xl font-semibold text-brand-dark">Productos</h2>
-        {products.length > 0 && (
-          <ChipGroup label="Filtrar productos">
-            {FILTERS.map((f) => (
-              <Chip key={f.key} active={filter === f.key} onClick={() => setFilter(f.key)}>
-                {f.label}
-              </Chip>
-            ))}
-          </ChipGroup>
-        )}
-      </div>
+      <h2 id="productos-titulo" className="text-2xl font-semibold text-brand-dark mb-5">Productos</h2>
+      {toolbar && <div className="mb-5 empty:hidden">{toolbar}</div>}
 
       {products.length === 0 ? (
         <EmptyState>Aún no hay productos publicados.</EmptyState>
       ) : (
-        <ul className="flex gap-4 overflow-x-auto snap-x pb-3 -mx-4 px-4">
+        <>
+        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {visible.map((p) => (
-            <li key={p.id} className="snap-start shrink-0 w-[220px] rounded-2xl overflow-hidden flex flex-col shadow-sm bg-brand-white">
+            <li key={p.id} className="rounded-2xl overflow-hidden flex flex-col shadow-sm bg-brand-white">
               <div className="relative aspect-[4/3] bg-neutral-200">
                 {p.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
                 )}
                 {p.tag && <Badge className="absolute top-3 left-3">{TAG_LABELS[p.tag]}</Badge>}
+                {isOwner && <OfferItemActions type="products" item={productToOffer(p)} />}
               </div>
               <div className="p-4 flex flex-1 flex-col gap-1.5">
                 <p className="text-[15px] font-semibold leading-snug line-clamp-2 text-brand-dark">{p.name}</p>
@@ -68,6 +64,8 @@ export function ProductsSection({ products, businessName, whatsapp }: ProductsSe
             </li>
           ))}
         </ul>
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
+        </>
       )}
     </div>
   );

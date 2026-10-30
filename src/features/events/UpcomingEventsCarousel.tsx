@@ -30,6 +30,7 @@ export function UpcomingEventsCarousel({
 
   useEffect(() => {
     if (!selfFetch) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza con las props o la caché antes de pedir datos
       setEvents(eventsProp);
       setLoading(loadingProp ?? false);
       return;

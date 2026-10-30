@@ -1,5 +1,8 @@
 import type { BusinessProduct, BusinessService } from '@/lib/business';
 
+// Tarjetas por página en las secciones públicas de productos y servicios.
+export const OFFER_ITEMS_PER_PAGE = 6;
+
 // Productos y servicios del micro-sitio tal como los usa el formulario.
 // Sin 'use client': también se usan desde componentes de servidor.
 export interface OfferItem {
@@ -7,10 +10,14 @@ export interface OfferItem {
   name: string;
   description: string | null;
   price?: number | null;
+  imageUrl?: string | null;
+  tags?: string[];
 }
 
-export const productsToOffer = (products: BusinessProduct[]): OfferItem[] =>
-  products.map((p) => ({ id: p.id, name: p.name, description: p.description, price: p.price }));
+export const productToOffer = (p: BusinessProduct): OfferItem => ({ id: p.id, name: p.name, description: p.description, price: p.price, imageUrl: p.imageUrl });
 
-export const servicesToOffer = (services: BusinessService[]): OfferItem[] =>
-  services.map((s) => ({ id: s.id, name: s.title, description: s.description }));
+export const productsToOffer = (products: BusinessProduct[]): OfferItem[] => products.map(productToOffer);
+
+export const serviceToOffer = (s: BusinessService): OfferItem => ({ id: s.id, name: s.title, description: s.description, imageUrl: s.imageUrl, tags: s.tags });
+
+export const servicesToOffer = (services: BusinessService[]): OfferItem[] => services.map(serviceToOffer);

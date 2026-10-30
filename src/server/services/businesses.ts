@@ -4,10 +4,11 @@ import { prisma } from '../db';
 import { badRequest, conflict, notFound } from '../http';
 import { BUSINESS_SLUG_MAX, slugify, slugProblem } from '../businesses/slug';
 import { ALLOWED_IMAGE_TYPES, getMediaStorage } from '../storage';
-import { ABOUT_MAX_IMAGES, COVER_MAX_BYTES, COVER_SIZE, LOGO_MAX_BYTES, MAX_IMAGE_BYTES } from '@/lib/media-limits';
+import { activeEvents } from './events';
+import { ABOUT_MAX_IMAGES, COVER_IMAGE_TYPES, COVER_MAX_BYTES, COVER_SIZE, ITEM_IMAGE_MAX_BYTES, LOGO_IMAGE_TYPES, LOGO_MAX_BYTES, MAX_IMAGE_BYTES } from '@/lib/media-limits';
 import imageSize from 'image-size';
 import type { z } from 'zod';
-import type { Business } from '@/lib/business';
+import { redactHiddenTabs, type Business } from '@/lib/business';
 import type { BusinessItemSchema, BusinessPageSchema, BusinessReviewSchema } from '../validation';
 
 type BusinessPage = z.output<typeof BusinessPageSchema>;
@@ -21,12 +22,20 @@ const PUBLIC_BUSINESS_SELECT = {
   slug: true,
   category: true,
   logoUrl: true,
+  logoShape: true,
   coverUrl: true,
   businessDescription: true,
+  aboutImages: true,
   hours: true,
   amenities: true,
   whatsappReservations: true,
   mapUrl: true,
+  phoneLabel: true,
+  addressLabel: true,
+  instagramLabel: true,
+  websiteLabel: true,
+  hiddenTabs: true,
+  contactInAllTabs: true,
   comuna: true,
   city: true,
   companyAddress: true,
@@ -58,11 +67,7 @@ export async function getPublicBusiness(slug: string) {
   const order = [{ sortOrder: 'asc' as const }, { createdAt: 'asc' as const }];
   const [events, products, services, highlights, reviews, aggregate] = await Promise.all([
     prisma.event.findMany({
-      where: {
-        ownerId,
-        OR: [{ publicationEndDate: null }, { publicationEndDate: { gte: now } }],
-        AND: [{ OR: [{ publicationStartDate: null }, { publicationStartDate: { lte: now } }] }],
-      },
+      where: { ownerId, ...activeEvents(now) },
       orderBy: { date: 'asc' },
       select: { id: true, title: true, slug: true, date: true, imageUrl: true, address: true, city: true, description: true, entryType: true, indoor: true },
     }),
@@ -149,27 +154,43 @@ async function assertSlugAvailable(slug: string, ownerId: string) {
 
 // Sube el logo o la portada del negocio y guarda su URL.
 export async function uploadBusinessImage(userId: string, kind: 'logo' | 'cover', file: File) {
-  const ext = ALLOWED_IMAGE_TYPES[file.type];
-  if (!ext) throw badRequest('Formato no permitido (usa jpeg, png o webp)');
-  if (file.type !== 'image/webp') throw badRequest('La imagen debe ser WEBP');
+  const ext = (kind === 'logo' ? LOGO_IMAGE_TYPES : COVER_IMAGE_TYPES)[file.type];
+  if (!ext) throw badRequest(kind === 'logo' ? 'Formato no permitido (usa jpg, png, webp o gif)' : 'La portada debe ser JPG, JPEG o WEBP');
   if (kind === 'cover' && file.size > COVER_MAX_BYTES) throw badRequest('La portada es muy pesada. Tamaño máximo 90 KB');
-  if (kind === 'cover') {
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const size = imageSize(buffer);
-    if (size.width !== COVER_SIZE.width || size.height !== COVER_SIZE.height) {
-      throw badRequest(`La portada debe medir ${COVER_SIZE.width} × ${COVER_SIZE.height} px`);
-    }
-  }
   if (kind === 'logo' && file.size > LOGO_MAX_BYTES) throw badRequest('El logo es muy pesado. Tamaño máximo 10 KB');
   if (file.size > MAX_IMAGE_BYTES) throw badRequest('La imagen es muy pesada. Tamaño máximo 4 MB');
 
   const buffer = Buffer.from(await file.arrayBuffer());
+  // Se revisa el contenido, no solo el tipo declarado.
+  let size: ReturnType<typeof imageSize>;
+  try {
+    size = imageSize(buffer);
+    if (size.type !== ext) throw new Error();
+  } catch {
+    throw badRequest('El archivo no es una imagen válida');
+  }
+  if (kind === 'cover' && (size.width !== COVER_SIZE.width || size.height !== COVER_SIZE.height)) {
+    throw badRequest(`La portada debe medir ${COVER_SIZE.width} × ${COVER_SIZE.height} px`);
+  }
   const url = await getMediaStorage().upload(`${userId}/business/${kind}-${randomUUID()}.${ext}`, buffer, file.type);
   return prisma.user.update({
     where: { id: userId },
     data: kind === 'logo' ? { logoUrl: url } : { coverUrl: url },
     select: PUBLIC_BUSINESS_SELECT,
   });
+}
+
+// Imagen de un producto o servicio: WEBP de hasta 2 MB. Se revisa el contenido, no solo el tipo declarado.
+export async function uploadItemImage(userId: string, file: File): Promise<{ url: string }> {
+  if (file.type !== 'image/webp') throw badRequest('La imagen debe ser WEBP');
+  if (file.size > ITEM_IMAGE_MAX_BYTES) throw badRequest('La imagen es muy pesada. Tamaño máximo 2 MB');
+  const buffer = Buffer.from(await file.arrayBuffer());
+  try {
+    if (imageSize(buffer).type !== 'webp') throw new Error();
+  } catch {
+    throw badRequest('La imagen debe ser WEBP');
+  }
+  return { url: await getMediaStorage().upload(`${userId}/business/item-${randomUUID()}.webp`, buffer, file.type) };
 }
 
 // Productos, servicios y destacados del dueño.
@@ -189,10 +210,18 @@ export async function updateBusinessItem(userId: string, type: BusinessItemType,
   await assertOwnedItem(userId, type, id);
   const data = itemData(type, dto, true) as never;
   switch (type) {
-    case 'products':
-      return prisma.businessProduct.update({ where: { id }, data });
-    case 'services':
-      return prisma.businessService.update({ where: { id }, data });
+    case 'products': {
+      const before = await prisma.businessProduct.findUnique({ where: { id }, select: { imageUrl: true } });
+      const updated = await prisma.businessProduct.update({ where: { id }, data });
+      if (before?.imageUrl !== updated.imageUrl) await removeOwnImage(userId, before?.imageUrl);
+      return updated;
+    }
+    case 'services': {
+      const before = await prisma.businessService.findUnique({ where: { id }, select: { imageUrl: true } });
+      const updated = await prisma.businessService.update({ where: { id }, data });
+      if (before?.imageUrl !== updated.imageUrl) await removeOwnImage(userId, before?.imageUrl);
+      return updated;
+    }
     case 'highlights':
       return prisma.businessHighlight.update({ where: { id }, data });
   }
@@ -201,12 +230,16 @@ export async function updateBusinessItem(userId: string, type: BusinessItemType,
 export async function deleteBusinessItem(userId: string, type: BusinessItemType, id: string) {
   await assertOwnedItem(userId, type, id);
   switch (type) {
-    case 'products':
-      await prisma.businessProduct.delete({ where: { id } });
+    case 'products': {
+      const { imageUrl } = await prisma.businessProduct.delete({ where: { id } });
+      await removeOwnImage(userId, imageUrl);
       return;
-    case 'services':
-      await prisma.businessService.delete({ where: { id } });
+    }
+    case 'services': {
+      const { imageUrl } = await prisma.businessService.delete({ where: { id } });
+      await removeOwnImage(userId, imageUrl);
       return;
+    }
     case 'highlights':
       await prisma.businessHighlight.delete({ where: { id } });
       return;
@@ -264,10 +297,9 @@ function itemData(type: BusinessItemType, dto: BusinessItem, partial: boolean): 
   } else {
     if (!partial && !dto.title) throw badRequest('Falta el título');
     if (dto.title !== undefined) out.title = dto.title.trim();
-    if (type === 'highlights') {
-      if (!partial && !dto.imageUrl) throw badRequest('El destacado necesita una imagen');
-      if (dto.imageUrl !== undefined) out.imageUrl = dto.imageUrl;
-    }
+    if (type === 'highlights' && !partial && !dto.imageUrl) throw badRequest('El destacado necesita una imagen');
+    if (dto.imageUrl !== undefined) out.imageUrl = dto.imageUrl;
+    if (type === 'services' && dto.tags !== undefined) out.tags = dto.tags ?? [];
   }
   if (dto.description !== undefined) out.description = dto.description || null;
   if (dto.sortOrder !== undefined) out.sortOrder = dto.sortOrder;
@@ -278,6 +310,14 @@ function itemData(type: BusinessItemType, dto: BusinessItem, partial: boolean): 
 export async function getBusinessPage(slug: string): Promise<Business | null> {
   const business = await getPublicBusiness(slug);
   return business ? (JSON.parse(JSON.stringify(business)) as Business) : null;
+}
+
+// La página según quién la mira: las pestañas ocultas solo se envían a su dueño.
+export async function getBusinessPageFor(slug: string, viewerId: string | null): Promise<Business | null> {
+  const business = await getBusinessPage(slug);
+  if (!business || business.hiddenTabs.length === 0) return business;
+  const isOwner = viewerId !== null && (await prisma.user.count({ where: { id: viewerId, slug } })) > 0;
+  return isOwner ? business : redactHiddenTabs(business);
 }
 
 // Disponibilidad de una URL. Si ya está en uso, sugiere la primera variante con número libre (rodolfoparada2).
@@ -337,10 +377,68 @@ export async function removeAboutImage(userId: string, url: string) {
   return updated;
 }
 
+// Cambia el orden de las fotos. Solo acepta exactamente las que ya tiene el negocio.
+export async function reorderAboutImages(userId: string, images: string[]) {
+  const current = await prisma.user.findUnique({ where: { id: userId }, select: { aboutImages: true } });
+  const sameImages = current?.aboutImages.length === images.length && new Set(images).size === images.length && images.every((url) => current.aboutImages.includes(url));
+  if (!sameImages) throw badRequest('Las fotos no coinciden con las guardadas');
+  return prisma.user.update({ where: { id: userId }, data: { aboutImages: images }, select: { aboutImages: true } });
+}
+
 // Ruta dentro del almacenamiento a partir de la URL guardada (local o Supabase).
 function storagePathFromUrl(url: string): string | undefined {
   const local = url.split('/uploads/')[1];
   if (local) return local;
   const supabase = url.split(`/object/public/${process.env.SUPABASE_BUCKET ?? 'SupabaseImage_Storage'}/`)[1];
   return supabase ? decodeURIComponent(supabase) : undefined;
+}
+
+// Borra un archivo del propio usuario. La URL de un producto la envía el cliente, así que nunca se toca
+// un archivo de otra cuenta. Best-effort: si falla, solo queda basura en Storage.
+async function removeOwnImage(userId: string, url: string | null | undefined) {
+  const path = url ? storagePathFromUrl(url) : undefined;
+  if (path?.startsWith(`${userId}/`)) await getMediaStorage().remove(path).catch(() => undefined);
+}
+
+// Elimina solo el micro-sitio: contenido y datos propios de la página. El perfil, la cuenta y los eventos se conservan.
+export async function deleteBusinessPage(userId: string) {
+  const current = await prisma.user.findUnique({ where: { id: userId }, select: { slug: true } });
+  if (!current?.slug) throw notFound('No tienes una página creada');
+
+  const [products, services] = await Promise.all([
+    prisma.businessProduct.findMany({ where: { ownerId: userId }, select: { imageUrl: true } }),
+    prisma.businessService.findMany({ where: { ownerId: userId }, select: { imageUrl: true } }),
+  ]);
+
+  await prisma.$transaction([
+    prisma.businessProduct.deleteMany({ where: { ownerId: userId } }),
+    prisma.businessService.deleteMany({ where: { ownerId: userId } }),
+    prisma.businessHighlight.deleteMany({ where: { ownerId: userId } }),
+    prisma.businessReview.deleteMany({ where: { ownerId: userId } }),
+    prisma.user.update({
+      where: { id: userId },
+      data: {
+        slug: null,
+        businessDescription: null,
+        hours: Prisma.DbNull,
+        amenities: Prisma.DbNull,
+        whatsappReservations: null,
+        mapUrl: null,
+        phoneLabel: null,
+        addressLabel: null,
+        instagramLabel: null,
+        websiteLabel: null,
+        hiddenTabs: [],
+        contactInAllTabs: false,
+        logoUrl: null,
+        logoShape: 'round',
+        coverUrl: null,
+        aboutImages: [],
+      },
+    }),
+  ]);
+
+  // Imágenes del micro-sitio (logo, portada y fotos). Best-effort: si falla, solo queda basura en Storage.
+  await getMediaStorage().removePrefix(`${userId}/business`).catch(() => undefined);
+  await Promise.all([...products, ...services].map((item) => removeOwnImage(userId, item.imageUrl)));
 }
