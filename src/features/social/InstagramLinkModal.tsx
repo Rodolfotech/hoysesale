@@ -44,7 +44,7 @@ export function InstagramLinkModal({ open, onClose, onSuccess, onError }: Instag
         onError('Tiempo de espera agotado. Intenta de nuevo.');
       }, 120000);
 
-      (window as any).__igTimer = timer;
+      (window as unknown as { __igTimer?: ReturnType<typeof setTimeout> }).__igTimer = timer;
 
       const handleMessage = async (e: MessageEvent) => {
         if (e.data?.type === 'instagram-code') {

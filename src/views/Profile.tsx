@@ -61,6 +61,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- copia los datos de la sesión al formulario editable
       setForm({
         name: user.name || '',
         companyInstagram: instagramHandleFrom(user.companyInstagram),
@@ -118,6 +119,7 @@ export default function Profile() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- carga las publicaciones al conectar Instagram
     if (instagramConnected) loadPosts();
   }, [instagramConnected, loadPosts]);
 

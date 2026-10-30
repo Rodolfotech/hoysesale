@@ -10,9 +10,7 @@ function createPrismaClient() {
     max: process.env.VERCEL ? 1 : 10,
     idleTimeoutMillis: process.env.VERCEL ? 5000 : 10000,
   });
-  // aboutImages se omite en todas las consultas por defecto: la columna no existe aún en producción (ver SPEC.md).
-  // Se vuelve a incluir cuando se apliquen las migraciones y se quite esta regla.
-  return new PrismaClient({ adapter: new PrismaPg(pool), omit: { user: { aboutImages: true } } });
+  return new PrismaClient({ adapter: new PrismaPg(pool) });
 }
 
 // Un solo cliente por proceso: el hot reload de `next dev` no debe abrir pools nuevos en cada recarga.

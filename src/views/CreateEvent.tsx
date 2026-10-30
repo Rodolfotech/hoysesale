@@ -34,6 +34,14 @@ export default function CreateEventPage() {
   const { isAuthenticated, user, setUser } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = usePersistentState<Tab>('ui:event:tab', 'instagram');
+
+  // Con ?tab=activas se abre directamente Publicaciones activas, por ejemplo desde el micro-sitio.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('tab') !== 'activas') return;
+    const timer = setTimeout(() => setTab('registered'), 0);
+    return () => clearTimeout(timer);
+  }, [setTab]);
+
   const [myEvents, setMyEvents] = useState<Event[]>([]);
   const [, setRegisteredEvents] = useState<Event[]>([]);
   const [instagramPosts, setInstagramPosts] = useState<SocialPost[]>([]);
@@ -94,6 +102,7 @@ export default function CreateEventPage() {
 
   useEffect(() => {
     if (tab !== 'instagram') return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- marca el inicio de la carga de una petición
     setLoadingPosts(true);
     socialApi.getUserMedia().then(({ data }) => setInstagramPosts(data)).catch(() => undefined).finally(() => setLoadingPosts(false));
   }, [tab]);

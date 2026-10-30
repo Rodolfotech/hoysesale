@@ -1,5 +1,6 @@
 'use client';
 
+import { apiErrorMessage } from '@/lib/api-error';
 import { usePersistentState } from '@/hooks/usePersistentState';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
@@ -68,8 +69,8 @@ export default function Register() {
       await register({ name, adminFirstName, adminLastName, adminPhone: `+569${adminPhone}`, comuna, email, password });
       clearRegisterDraft();
       navigate('/profile');
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Error al registrarse');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Error al registrarse'));
     } finally {
       setLoading(false);
     }

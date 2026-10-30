@@ -9,15 +9,19 @@ import { Button } from '../../components/ui/Button';
 import { CountdownBoxes } from '../../components/ui/CountdownBoxes';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { whatsappLink } from './format';
+import { useIsOwner } from './useIsOwner';
 
 interface EventsCountdownProps {
+  slug: string;
   events: BusinessEvent[];
   businessName: string;
   whatsapp: string | null;
 }
 
 // Próximos eventos con cuenta regresiva y reserva por WhatsApp.
-export function EventsCountdown({ events, businessName, whatsapp }: EventsCountdownProps) {
+export function EventsCountdown({ slug, events, businessName, whatsapp }: EventsCountdownProps) {
+  const isOwner = useIsOwner(slug);
+
   if (events.length === 0) {
     return <EmptyState>No hay eventos especiales programados para estos días. ¡Visítanos en nuestro horario habitual!</EmptyState>;
   }
@@ -48,11 +52,14 @@ export function EventsCountdown({ events, businessName, whatsapp }: EventsCountd
               </div>
               <div className="flex items-end justify-between gap-3 flex-wrap">
                 <CountdownBoxes to={date} />
-                {whatsapp && (
-                  <Button href={whatsappLink(whatsapp, `Hola, quiero reservar cupo en ${ev.title} de ${businessName}`)} target="_blank">
-                    Reservar cupo
-                  </Button>
-                )}
+                <div className="flex flex-wrap justify-end gap-2">
+                  {isOwner && <Button href="/create-event?tab=activas" variant="outline">Ir a publicaciones activas</Button>}
+                  {whatsapp && (
+                    <Button href={whatsappLink(whatsapp, `Hola, quiero reservar cupo en ${ev.title} de ${businessName}`)} target="_blank">
+                      Reservar cupo
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </li>

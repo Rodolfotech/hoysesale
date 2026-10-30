@@ -1,74 +1,87 @@
 # Plan de seguridad y escalabilidad — HoySeSale.cl
 
-Plan para mejorar la seguridad y la escalabilidad del proyecto. Cada tarea tiene un criterio de éxito verificable.
+Estado de la seguridad y la escalabilidad del proyecto. Cada tarea pendiente tiene un criterio de éxito verificable. Actualizado el 30-10-2026.
 
-## Estado actual (actualizado con el código de `main`)
+## Estado actual
 
-- **Hecho en el código:** validaciones de entrada en servidor (teléfono, Instagram, URL, horarios, imágenes), autorización de eventos, asistentes y perfil, cron con secreto, webhook sin token por defecto, límite de login y límite global por IP (en memoria).
-- **Pendiente en producción:** migraciones de la base (incluida `aboutImages`). Mientras tanto, `aboutImages` está omitido en consultas para no romper login ni micro-sitios.
-- **Pendiente en el código:** lint (20 errores, la mayoría heredados), pruebas de API dentro del repositorio, caché de la página del negocio.
-- **Lecciones aplicadas:** ver la sección "Errores que ya cometimos" en `README.md`.
+- **Producción:** esquema de base de datos al día. Falta desplegar el código de esta entrega.
+- **Código:** cabeceras, límite compartido, pruebas de permisos y filtrado de pestañas ocultas terminados y probados en local.
+- **Próximo paso:** rotar los secretos y desplegar con revisión del preview.
+- **Lecciones aplicadas:** ver "Errores que ya cometimos" en `README.md`.
 
-## Fase 0: desbloquear producción (prioridad inmediata)
+## Hecho
 
-1. **Aplicar las migraciones en producción.**
-   Requiere confirmación explícita (ver `SPEC.md`). Al aplicarlas, quitar la regla de `omit` de `aboutImages` en `src/server/db.ts` y volver a incluir el campo en `PUBLIC_BUSINESS_SELECT` (`src/server/services/businesses.ts`).
-   *Criterio:* `GET /api/businesses/<slug>` responde 200 con `aboutImages`.
+| Tarea | Resultado |
+|---|---|
+| Esquema en producción | SQL manual verificado contra `information_schema`. RLS activo en las tablas nuevas |
+| Cabeceras de seguridad | CSP, HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` y `Permissions-Policy`. Sin bloqueos en páginas principales con dos instancias de producción local |
+| Límite compartido | Login, registro, revisión de correo y contraseña, en Postgres. Si falla, deja pasar. Comprobado entre dos instancias |
+| Login justo con redes compartidas | Límite estricto por IP y correo: 20 personas tras una IP no se bloquearon |
+| Pestañas ocultas | Filtradas en el servidor, en HTML y API |
+| Pruebas de autorización | En `pnpm test`: todas las rutas responden 401 sin sesión, salvo las declaradas públicas |
+| Asistentes de eventos | La ruta era pública. Ahora solo el dueño del evento o un administrador |
+| Token de recuperación | Ya no sirve como sesión |
+| Cookies | `HttpOnly`, `Secure` y `SameSite=Lax` comprobados en un build de producción local |
+| Dependencias | `pnpm audit --prod` sin vulnerabilidades conocidas |
+| Lint | 0 errores. 11 casos de `set-state-in-effect` quedaron justificados con un comentario, sin rediseñar esos efectos |
+| Validaciones de entrada | Teléfono, Instagram, URL, horarios, imágenes y textos de contacto en el servidor |
 
-2. **Publicar los cambios desde una rama `fix/`.**
-   Seguir el flujo de `SPEC.md`: rama, commit, push, merge local con `--no-ff`. Revisar primero el preview de Vercel.
-   *Criterio:* en producción, el login (correo y Google) y la página del negocio funcionan; crear y editar página responden sin error.
+## Fase 0: publicar
+
+1. **Rotar secretos (lo hace el dueño del proyecto).**
+   Cambiar `JWT_SECRET`, la contraseña de la base y la clave de servicio de Supabase en sus paneles, y actualizarlos en Vercel. Al cambiar `JWT_SECRET` se cierran todas las sesiones. La lista de secretos expuestos estaba en `SPEC.md`, que no está en este repositorio.
+   *Criterio:* los valores antiguos dejan de funcionar y el sitio sigue operativo.
+
+2. **Desplegar desde una rama con Pull Request.**
+   Revisar el preview de Vercel antes del merge. Comprobar que RLS no afecte a la app: si fallan login o micro-sitios, revisar el rol de `DATABASE_URL`.
+   *Criterio:* en producción funcionan login, registro, micro-sitios y subida de imágenes a Supabase, sin avisos de CSP en la consola.
+
+3. **Probar uso real desde otras regiones.**
+   Esta entrega se probó solo en local.
+   *Criterio:* la página del negocio carga en un tiempo aceptable desde fuera de Chile.
 
 ## Fase 1: seguridad
 
-1. **Límite de peticiones compartido.**
-   Hoy el contador vive en memoria de cada instancia de Vercel (`src/server/rate-limit.ts`), así que no es global. Migrar a un almacén compartido (Upstash Redis o similar) para la API general y el login.
-   *Criterio:* un cliente que cambia de instancia sigue limitado (prueba con varias peticiones seguidas).
+1. **Límite global compartido.**
+   Las 300 peticiones por minuto por IP siguen en memoria de cada instancia. Evaluar un almacén compartido o el firewall de Vercel.
+   *Criterio:* un cliente que cambia de instancia sigue limitado.
 
 2. **Revisión de URL con menos consultas y con límite.**
-   `checkBusinessSlug` carga todas las categorías en cada variante y puede revisar hasta 998 candidatos. Cargar las categorías una sola vez, consultar las variantes en un solo paso y aplicar el límite de peticiones a `/api/businesses/check-slug`.
-   *Criterio:* como máximo 2 consultas a categorías por petición; el endpoint responde 429 al superar el límite.
+   `checkBusinessSlug` carga todas las categorías en cada variante y puede revisar hasta 998 candidatos.
+   *Criterio:* como máximo 2 consultas a categorías por petición, y el endpoint responde 429 al superar el límite.
 
-3. **Cabeceras de seguridad.**
-   Agregar en `next.config.ts`: `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` y `Strict-Transport-Security`.
-   *Criterio:* el sitio carga sin errores de CSP y `securityheaders.com` da al menos calificación B.
+3. **CSP más estricta.**
+   Hoy usa `'unsafe-inline'` en scripts. Reemplazarlo por nonces requiere páginas dinámicas.
+   *Criterio:* CSP sin `'unsafe-inline'` en scripts y sin bloqueos.
 
-4. **Auditoría de dependencias.**
-   Ejecutar `pnpm audit`, actualizar las dependencias con vulnerabilidades críticas y altas, y documentar las que queden.
-   *Criterio:* sin vulnerabilidades críticas ni altas sin justificar.
+4. **Quitar credenciales de los documentos.**
+   Confirmar que no queden en documentos externos al repositorio. En este repositorio no se encontraron contraseñas reales en el historial con el patrón revisado.
+   *Criterio:* `git grep` no encuentra contraseñas ni tokens.
 
-5. **Rotar secretos y limpiar documentos.**
-   Rotar los secretos expuestos en conversaciones (lista en `SPEC.md`). Quitar credenciales de `README.md` y de los documentos del repositorio. Confirmar que `.env` sigue ignorado por git.
-   *Criterio:* `git grep` no encuentra contraseñas ni tokens en el historial reciente; los secretos nuevos están solo en Vercel.
-
-6. **Pruebas automáticas de autorización.**
-   Pasar la batería de `api-check` (hoy en un script local) al repositorio. Cada endpoint protegido debe tener una prueba de "sin sesión" (401) y otra de "otro usuario" (403).
-   *Criterio:* las pruebas corren con `pnpm test` y pasan.
-
-7. **Cookies y sesión.**
-   Verificar que la cookie `access_token` sea `httpOnly`, `secure` en producción y `sameSite=lax`. Revisar la duración de 7 días y evaluar una renovación.
-   *Criterio:* la cabecera `Set-Cookie` de producción incluye `HttpOnly; Secure; SameSite=Lax`.
+5. **Duración de la sesión.**
+   Revisar los 7 días y evaluar una renovación.
+   *Criterio:* decisión documentada.
 
 ## Fase 2: escalabilidad
 
 1. **Caché de la página del negocio.**
-   Usar `revalidate` en `src/app/(main)/[slug]/page.tsx` y revalidar por etiqueta (`revalidateTag`) al guardar cambios del negocio.
-   *Criterio:* una segunda visita a la misma página no hace consultas a la base (verificar en logs de Prisma).
+   La página lee la sesión para filtrar pestañas, así que cualquier caché debe respetar esa diferencia entre dueño y visitante.
+   *Criterio:* una segunda visita de un visitante no consulta la base.
 
 2. **Listado de categorías liviano.**
-   `listCategories` devuelve todos los eventos de cada categoría. Cambiarlo a conteos (`_count`) o paginación.
+   `listCategories` devuelve todos los eventos de cada categoría.
    *Criterio:* la respuesta de `GET /api/categories` pesa menos de 5 KB con la base actual.
 
 3. **Índices en la base.**
-   Revisar las consultas de eventos publicados (por ventana de publicación y fecha) y de eventos por dueño. Agregar índices según `EXPLAIN`.
-   *Criterio:* las consultas principales usan índice (sin escaneo secuencial en tablas grandes).
+   Revisar las consultas de eventos publicados y de eventos por dueño.
+   *Criterio:* las consultas principales usan índice.
 
 4. **Prueba de carga.**
-   Medir la página del negocio y `GET /api/events` con una herramienta de carga (k6 o similar) con carga moderada.
+   Medir la página del negocio y `GET /api/events`.
    *Criterio:* el 95% de las respuestas responde en menos de 500 ms.
 
 5. **Monitoreo.**
-   Integrar un servicio de errores (Sentry) y alertas de errores 5xx en Vercel.
+   Integrar un servicio de errores y alertas de errores 5xx.
    *Criterio:* un error de servidor genera una alerta en menos de 5 minutos.
 
 ## Fase 3: calidad y proceso
@@ -77,16 +90,19 @@ Plan para mejorar la seguridad y la escalabilidad del proyecto. Cada tarea tiene
    Ejecutar type check, lint, pruebas y build en GitHub Actions.
    *Criterio:* un PR con errores no se puede mergear.
 
-2. **Limpiar errores de lint.**
-   Quedan 20 errores, la mayoría en código que ya existía (`Profile`, `ReviewsSection`, `BusinessContentManager`, `MediaUploader`).
-   *Criterio:* `pnpm lint` sin errores.
+2. **Pruebas de navegador en el repositorio.**
+   Las de Playwright se hicieron fuera del repositorio.
+   *Criterio:* corren con un comando y cubren login, micro-sitio y edición.
 
-3. **Documentación viva.**
-   Mantener `PLAN.md`, `SPEC.md` y este archivo al día con cada entrega. Convertir `copia.md` en documentación de arquitectura.
-   *Criterio:* cada fase cerrada queda marcada en `PLAN.md`.
+3. **Registrar las migraciones de producción en Prisma.**
+   Marcarlas como aplicadas para volver a usar `prisma migrate deploy`.
+   *Criterio:* `prisma migrate status` contra producción no muestra pendientes.
+
+4. **Revisar las advertencias de lint y los efectos justificados.**
+   *Criterio:* `pnpm lint` sin advertencias.
 
 ## Orden sugerido
 
-Fase 0 → 1.1 → 2.1 → 1.6 → 1.5 → el resto.
+Fase 0 → 1.1 → 2.1 → 3.1 → el resto.
 
-La Fase 0 es la única que bloquea el uso del sitio. Las demás pueden hacerse en paralelo, una rama por tarea.
+La Fase 0 es la única que bloquea la publicación. Las demás pueden hacerse en paralelo, una rama por tarea.

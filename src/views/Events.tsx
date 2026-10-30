@@ -57,6 +57,7 @@ export default function Events() {
   }, [dateFrom, dateTo]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- marca el inicio de la carga de una petición
     setLoading(true);
     const params: Record<string, string | number> = { page, limit: ITEMS_PER_PAGE };
     if (dateFrom) params.dateFrom = dateFrom;

@@ -1,5 +1,6 @@
 'use client';
 
+import { apiErrorMessage } from '@/lib/api-error';
 import { useState, useEffect } from 'react';
 import { adminApi, authApi } from '../api';
 import { COMUNAS } from '../constants/comunas';
@@ -83,14 +84,15 @@ export default function Admin() {
       await authApi.login(loginEmail, loginPassword);
       setLoginLoading(false);
       window.location.reload();
-    } catch (err: any) {
+    } catch (err) {
       setLoginLoading(false);
-      setLoginError(err?.response?.data?.message || 'Credenciales inválidas');
+      setLoginError(apiErrorMessage(err, 'Credenciales inválidas'));
     }
   };
 
   useEffect(() => {
     if (!accessGranted) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- marca el inicio de la carga de una petición
     setLoading(true);
     adminApi.getUsers(comuna || undefined).then(({ data }) => {
       setUsers(data);

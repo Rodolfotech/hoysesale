@@ -40,12 +40,19 @@ model User {
   slug                 String? @unique
   category             String?
   logoUrl              String?
+  logoShape            String  @default("round") // marco del logo: round o square
   coverUrl             String?
   businessDescription  String? @db.Text
   hours                Json?
   amenities            Json?
   whatsappReservations String?
   mapUrl               String?
+  phoneLabel           String? // texto que acompaña al teléfono en el micro-sitio
+  addressLabel         String? // texto que acompaña a la dirección en el micro-sitio
+  instagramLabel       String? // texto que acompaña al Instagram en el micro-sitio
+  websiteLabel         String? // texto que acompaña al sitio web en el micro-sitio
+  hiddenTabs           String[] @default([]) // pestañas del micro-sitio ocultas a los visitantes
+  contactInAllTabs     Boolean @default(false) // muestra el contacto debajo de cada pestaña
   aboutImages          String[] @default([]) // hasta 3 fotos del negocio (sección Nosotros)
 
   ownedEvents        Event[]             @relation("EventOwner")
@@ -218,6 +225,8 @@ model BusinessService {
   ownerId     String @db.Uuid
   title       String
   description String?  @db.Text
+  imageUrl    String?
+  tags        String[] @default([])
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
 
@@ -254,4 +263,13 @@ model BusinessReview {
 
   @@unique([ownerId, authorId])
   @@map("business_reviews")
+}
+
+// Contadores de intentos compartidos entre instancias. La clave es un hash: no guarda correos ni IP.
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime @db.Timestamptz(3)
+
+  @@map("rate_limits")
 }

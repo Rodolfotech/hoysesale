@@ -1,7 +1,7 @@
 import api from './client';
 import { ADMIN_API_PREFIX } from '../constants/admin';
 import type { User, Event, Category, CreateEventPayload, SocialConnectPayload, SocialPost, PaginatedResponse } from '../types';
-import type { Business } from '@/lib/business';
+import type { AddressLabel, Business, HideableTab, InstagramLabel, LogoShape, PhoneLabel, WebsiteLabel } from '@/lib/business';
 
 // Registro obligatorio de organizador (mismos campos que RegisterDto del backend)
 export interface RegisterPayload {
@@ -119,13 +119,20 @@ export const adminApi = {
 
 // Micro-sitio del negocio (edición del propio negocio)
 export const businessApi = {
+  deletePage: () => api.delete('/businesses/me'),
   uploadAboutImage: (file: File) => {
     const form = new FormData();
     form.append('file', file);
     return api.post<{ aboutImages: string[] }>('/businesses/me/about-images', form, { headers: { 'Content-Type': undefined } });
   },
+  uploadItemImage: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post<{ url: string }>('/businesses/me/item-image', form, { headers: { 'Content-Type': undefined } });
+  },
   deleteAboutImage: (url: string) =>
     api.delete<{ aboutImages: string[] }>('/businesses/me/about-images', { params: { url } }),
+  reorderAboutImages: (images: string[]) => api.put<{ aboutImages: string[] }>('/businesses/me/about-images', { images }),
   getBySlug: (slug: string) => api.get<Business>(`/businesses/${slug}`),
   checkSlug: (slug: string) =>
     api.get<{ available: boolean; message?: string; suggestion?: string }>('/businesses/check-slug', { params: { slug } }),
@@ -155,5 +162,12 @@ export const businessApi = {
     amenities: string[];
     whatsappReservations: string | null;
     mapUrl: string | null;
+    logoShape: LogoShape;
+    phoneLabel: PhoneLabel | null;
+    addressLabel: AddressLabel | null;
+    instagramLabel: InstagramLabel | null;
+    websiteLabel: WebsiteLabel | null;
+    hiddenTabs: HideableTab[];
+    contactInAllTabs: boolean;
   }>) => api.put<Partial<User>>('/businesses/me', data),
 };

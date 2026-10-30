@@ -1,20 +1,33 @@
 // Micro-sitio público de un negocio. Componente de servidor (HTML indexable). Las partes interactivas son componentes de cliente.
+import type { ComponentProps } from 'react';
 import { whatsappLink } from '@/features/business/format';
-import { hoursText } from '@/lib/hours';
+import { AboutImagesEdit } from '@/features/business/AboutImagesEdit';
+import { BusinessContactEdit } from '@/features/business/BusinessContactEdit';
+import { BusinessDescriptionEdit } from '@/features/business/BusinessDescriptionEdit';
+import { BusinessHoursCard } from '@/features/business/BusinessHoursCard';
+import { BusinessHoursEdit } from '@/features/business/BusinessHoursEdit';
+import { BusinessImageEdit } from '@/features/business/BusinessImageEdit';
+import { BusinessTabs } from '@/features/business/BusinessTabs';
+import { ContactVisibility } from '@/features/business/ContactVisibility';
+import { TabVisibilitySwitch } from '@/features/business/TabVisibilitySwitch';
 import { BusinessOwnerBar } from '@/features/business/BusinessOwnerBar';
 import { productsToOffer, servicesToOffer } from '@/features/business/offer';
 import { ImageCarousel } from '@/components/ui/ImageCarousel';
+import { AmenityList } from '@/features/business/AmenityList';
 import { ProductsSection } from '@/features/business/ProductsSection';
+import { ServicesSection } from '@/features/business/ServicesSection';
 import { EventsCountdown } from '@/features/business/EventsCountdown';
 import { ReviewsSection } from '@/features/business/ReviewsSection';
 import { BottomBar } from '@/features/business/BottomBar';
-import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { SectionTabs } from '@/components/ui/SectionTabs';
 import { Stat } from '@/components/ui/Stat';
-import { AMENITY_LABELS, BUSINESS_AMENITIES, BUSINESS_DAYS } from '@/constants/business';
-import { SITE_URL, type Business } from '@/lib/business';
+import { BUSINESS_AMENITIES } from '@/constants/business';
+import { ADDRESS_LABELS, INSTAGRAM_LABELS, SITE_URL, WEBSITE_LABELS, type Business } from '@/lib/business';
+
+// Interruptor bajo el título de una pestaña. Sin 'use client': el interruptor solo aparece para el dueño.
+function TabToolbar(props: ComponentProps<typeof TabVisibilitySwitch>) {
+  return <div className="mb-5 empty:hidden"><TabVisibilitySwitch {...props} /></div>;
+}
 
 export default function BusinessPage({ business }: { business: Business }) {
   const pageUrl = `${SITE_URL}/${business.slug}`;
@@ -29,6 +42,9 @@ export default function BusinessPage({ business }: { business: Business }) {
       ? business.companyInstagram
       : `https://instagram.com/${business.companyInstagram.replace(/^@/, '')}`
     : null;
+  const statTone = business.coverUrl ? 'light' : 'dark';
+  // Lo que se ve en el enlace: el último tramo de la URL, sin parámetros.
+  const instagramHandle = instagram ? `@${instagram.split('?')[0].replace(/\/+$/, '').split('/').pop()}` : null;
   const paragraphs = (business.businessDescription ?? '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
   const amenities = BUSINESS_AMENITIES.filter((a) => business.amenities?.includes(a));
 
@@ -70,44 +86,46 @@ export default function BusinessPage({ business }: { business: Business }) {
     coverUrl: business.coverUrl,
   };
 
+  const contactCard = (
+    <Card padding="sm" className="p-5 text-sm flow-root">
+      <BusinessContactEdit
+        slug={business.slug}
+        contact={{ address: business.companyAddress, addressLabel: business.addressLabel, phone: business.companyPhone, phoneLabel: business.phoneLabel, instagram: business.companyInstagram, instagramLabel: business.instagramLabel, website: business.website, websiteLabel: business.websiteLabel }}
+        className="float-right ml-3 mb-1"
+      />
+      <div className="space-y-2">
+        {business.companyAddress && <p><span className="font-semibold">{business.addressLabel ?? ADDRESS_LABELS[0]}:</span> {business.companyAddress}{business.comuna ? `, ${business.comuna}` : ''}</p>}
+        {business.companyPhone && <p>{business.phoneLabel && <span className="font-semibold">{business.phoneLabel}: </span>}{business.companyPhone}</p>}
+        {instagram && <p><span className="font-semibold">{business.instagramLabel ?? INSTAGRAM_LABELS[0]}:</span> <a href={instagram} target="_blank" rel="noopener noreferrer" className="underline text-brand-blue">{instagramHandle}</a></p>}
+        {business.website && <p><span className="font-semibold">{business.websiteLabel ?? WEBSITE_LABELS[0]}:</span> <a href={business.website} target="_blank" rel="noopener noreferrer" className="underline text-brand-blue">{business.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}</a></p>}
+      </div>
+    </Card>
+  );
+
   const panels = [
     {
       id: 'productos',
       label: 'Productos',
       content: (
             <section aria-labelledby="productos-titulo">
-          <ProductsSection products={business.products} businessName={business.name} whatsapp={reservationsPhone} />
+          <ProductsSection slug={business.slug} toolbar={<TabVisibilitySwitch tab="productos" name="Productos" />} products={business.products} businessName={business.name} whatsapp={reservationsPhone} />
             </section>      ),
     },
     {
       id: 'servicios',
       label: 'Servicios',
       content: (
-            <section aria-labelledby="servicios-titulo">
-          <h2 id="servicios-titulo" className="text-2xl font-semibold mb-5">Servicios</h2>
-          {business.services.length === 0 ? (
-            <EmptyState>Aún no hay servicios publicados.</EmptyState>
-          ) : (
-            <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {business.services.map((s, i) => {
-                const featured = i === 0;
-                return (
-                  <Card as="li" key={s.id} tone={featured ? 'accent' : 'default'} padding="sm" className="p-5 flex gap-4 items-start">
-                    <span
-                      aria-hidden="true"
-                      className={`w-11 h-11 shrink-0 rounded-full flex items-center justify-center text-lg ${featured ? 'bg-white/20' : 'bg-brand-neutral-2 text-brand-blue'}`}
-                    >
-                      ✦
-                    </span>
-                    <div>
-                      <p className="font-semibold">{s.title}</p>
-                      {s.description && <p className={`text-sm mt-1 ${featured ? 'opacity-85' : 'text-brand-dark/60'}`}>{s.description}</p>}
-                    </div>
-                  </Card>
-                );
-              })}
-            </ul>
-          )}
+          <ServicesSection slug={business.slug} toolbar={<TabVisibilitySwitch tab="servicios" name="Servicios" />} services={business.services} businessName={business.name} whatsapp={reservationsPhone} />
+      ),
+    },
+    {
+      id: 'contactanos',
+      label: 'Contáctanos',
+      content: (
+            <section aria-labelledby="contactanos-titulo">
+          <h2 id="contactanos-titulo" className="text-2xl font-semibold mb-5">Contáctanos</h2>
+          <ContactVisibility inAllTabs={business.contactInAllTabs} />
+          {contactCard}
             </section>      ),
     },
     {
@@ -116,7 +134,20 @@ export default function BusinessPage({ business }: { business: Business }) {
       content: (
             <section aria-labelledby="eventos-titulo">
           <h2 id="eventos-titulo" className="text-2xl font-semibold mb-5">Próximos eventos</h2>
-          <EventsCountdown events={business.events} businessName={business.name} whatsapp={reservationsPhone} />
+          <TabToolbar tab="eventos" name="Eventos" />
+          <EventsCountdown slug={business.slug} events={business.events} businessName={business.name} whatsapp={reservationsPhone} />
+            </section>      ),
+    },
+    {
+      id: 'horario',
+      label: 'Horario',
+      content: (
+            <section aria-labelledby="horario-titulo">
+          <h2 id="horario-titulo" className="text-2xl font-semibold mb-5">Horario</h2>
+          <TabToolbar tab="horario" name="Horario" />
+          <div className="text-sm">
+            <BusinessHoursCard hours={business.hours} action={<BusinessHoursEdit slug={business.slug} hours={business.hours} />} />
+          </div>
             </section>      ),
     },
     {
@@ -125,43 +156,20 @@ export default function BusinessPage({ business }: { business: Business }) {
       content: (
             <section aria-labelledby="nosotros-titulo">
           <h2 id="nosotros-titulo" className="text-2xl font-semibold mb-5">Nosotros</h2>
-          <div className="mb-6">
-            <ImageCarousel images={business.aboutImages ?? []} alt={`Fotos de ${business.name}`} />
+          <div className="relative mb-6">
+            <ImageCarousel images={business.aboutImages ?? []} alt={`Fotos de ${business.name}`} aspectClass="aspect-[5/3] md:aspect-[25/9]" />
+            <AboutImagesEdit slug={business.slug} images={business.aboutImages ?? []} className={business.aboutImages?.length ? 'absolute z-10 top-3 right-3' : ''} />
           </div>
-          <Card className="space-y-4">
-            {paragraphs.map((p, i) => (
-              <p key={i} className="text-base leading-relaxed">{p}</p>
-            ))}
-            {amenities.length > 0 && (
-              <ul className="flex flex-wrap gap-2 pt-2" aria-label="Comodidades">
-                {amenities.map((a) => (
-                  <li key={a}><Badge tone="brand">{AMENITY_LABELS[a] ?? a}</Badge></li>
-                ))}
-              </ul>
-            )}
+          <Card className="flow-root">
+            {/* Flotante: el texto rodea el botón y no queda tapado. */}
+            <BusinessDescriptionEdit slug={business.slug} description={business.businessDescription ?? ''} className="float-right ml-3 mb-1" />
+            <div className="space-y-4">
+              {paragraphs.map((p, i) => (
+                <p key={i} className="text-base leading-relaxed">{p}</p>
+              ))}
+              {amenities.length > 0 && <AmenityList amenities={amenities} className="flex flex-wrap gap-2 pt-2" />}
+            </div>
           </Card>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
-            {business.hours && Object.keys(business.hours).length > 0 && (
-              <Card padding="sm" className="p-5">
-                <h3 className="font-semibold mb-3">Horarios</h3>
-                <ul className="space-y-1.5">
-                  {BUSINESS_DAYS.map((d) => (
-                    <li key={d} className="flex justify-between gap-4">
-                      <span className="capitalize text-brand-dark/60">{d}</span>
-                      <span>{hoursText(business.hours?.[d], d)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            )}
-            <Card padding="sm" className="p-5 space-y-2">
-              <h3 className="font-semibold mb-3">Contacto</h3>
-              {business.companyAddress && <p>{business.companyAddress}{business.comuna ? `, ${business.comuna}` : ''}</p>}
-              {business.companyPhone && <p>{business.companyPhone}</p>}
-              {instagram && <p><a href={instagram} target="_blank" rel="noopener noreferrer" className="underline text-brand-blue">Instagram</a></p>}
-              {business.website && <p><a href={business.website} target="_blank" rel="noopener noreferrer" className="underline text-brand-blue">Sitio web</a></p>}
-            </Card>
-          </div>
             </section>      ),
     },
     {
@@ -170,42 +178,48 @@ export default function BusinessPage({ business }: { business: Business }) {
       content: (
             <section aria-labelledby="resenas-titulo">
           <h2 id="resenas-titulo" className="text-2xl font-semibold mb-5">Reseñas</h2>
+          <TabToolbar tab="resenas" name="Reseñas" />
           <ReviewsSection slug={business.slug} reviews={business.reviews} rating={business.stats.rating} reviewCount={business.stats.reviewCount} />
             </section>      ),
     },
   ];
 
   return (
-    <main className="w-full pb-32 bg-brand-neutral-1 text-brand-dark">
+    <main className={`w-full pb-16 bg-brand-neutral-1 text-brand-dark ${business.coverUrl ? 'pt-16' : ''}`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       {/* Cabecera a sangre: portada con degradado, nombre y estadísticas */}
-      <section className="relative w-full min-h-[280px] md:min-h-[340px] flex items-end overflow-hidden bg-brand-dark">
+      {/* Con portada: imagen centrada y completa, con los datos debajo sobre el fondo claro de la página. Sin portada: fondo oscuro. */}
+      <section className={`relative w-full overflow-hidden ${business.coverUrl ? '' : 'bg-brand-dark min-h-[280px] md:min-h-[340px] flex items-end'}`}>
+        <div className={business.coverUrl ? 'relative w-full max-w-7xl mx-auto px-4' : 'contents'}>
         {business.coverUrl && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={business.coverUrl} alt={`Portada de ${business.name}`} className="absolute inset-0 w-full h-full object-cover" />
+          <img src={business.coverUrl} alt={`Portada de ${business.name}`} className="block w-full aspect-[3/1] object-contain" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />
-        <div className="relative w-full max-w-5xl mx-auto px-4 pb-6 text-white">
-          <div className="flex items-center gap-3">
-            {business.logoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={business.logoUrl} alt={`Logo de ${business.name}`} className="w-12 h-12 rounded-full object-cover bg-white border-2 border-white" />
-            )}
-            <h1 className="text-3xl md:text-4xl font-semibold">{business.name}</h1>
+        <BusinessImageEdit slug={business.slug} kind="cover" value={business.coverUrl} className={`absolute z-10 ${business.coverUrl ? 'top-3 right-7' : 'top-20 right-4'}`} />
+        {!business.coverUrl && <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />}
+        <div className={`relative w-full max-w-7xl mx-auto pb-6 ${business.coverUrl ? 'pt-4 text-brand-dark' : 'px-4 text-white'}`}>
+          <div className="flex flex-col items-start gap-3">
+            <div className={`relative w-fit ${business.logoUrl && business.coverUrl ? '-mt-[69px] md:-mt-[86px]' : ''}`}>
+              {business.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={business.logoUrl} alt={`Logo de ${business.name}`} className={`w-[106px] h-[106px] md:w-[141px] md:h-[141px] ${business.logoShape === 'square' ? 'rounded-2xl' : 'rounded-full'} object-cover bg-white border-2 border-white`} />
+              )}
+              <BusinessImageEdit slug={business.slug} kind="logo" value={business.logoUrl} logoShape={business.logoShape} className={business.logoUrl ? 'absolute z-10 left-full ml-3 bottom-2' : ''} />
+            </div>
+            {/* El nombre no se muestra: queda como título para buscadores y lectores de pantalla. */}
+            <h1 className="sr-only">{business.name}</h1>
           </div>
-          <p className="mt-2 text-sm md:text-base opacity-90 line-clamp-2">
-            {paragraphs[0] ?? [business.category, business.comuna].filter(Boolean).join(' · ')}
-          </p>
           <dl className="mt-4 flex gap-8">
-            <Stat tone="dark" label="Valoración" value={business.stats.rating !== null ? `★ ${business.stats.rating}` : '—'} />
-            <Stat tone="dark" label="Reseñas" value={business.stats.reviewCount} />
-            <Stat tone="dark" label="Años" value={business.stats.years} />
+            <Stat tone={statTone} label="Valoración" value={business.stats.rating !== null ? `★ ${business.stats.rating}` : '—'} />
+            <Stat tone={statTone} label="Reseñas" value={business.stats.reviewCount} />
+            <Stat tone={statTone} label="Años" value={business.stats.years} />
           </dl>
+        </div>
         </div>
       </section>
 
-      <div className="max-w-5xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-end mt-4">
           <BusinessOwnerBar
             slug={business.slug}
@@ -234,13 +248,18 @@ export default function BusinessPage({ business }: { business: Business }) {
         )}
       </div>
 
-      <SectionTabs panels={panels} />
+      <BusinessTabs
+        slug={business.slug}
+        storageKey={`tab:business:${business.slug}`}
+        defaultId="eventos"
+        panels={[...panels].sort((a, b) => a.label.localeCompare(b.label, 'es'))}
+        hiddenTabs={business.hiddenTabs}
+        footer={business.contactInAllTabs ? contactCard : undefined}
+        footerHiddenOn="contactanos"
+      />
 
-      <footer className="mt-16 pt-6 text-center text-xs text-brand-dark/60 border-t border-brand-neutral-2 px-4">
-        Perfil administrado en HoySeSale.cl
-      </footer>
-
-      <BottomBar mapHref={mapHref} contactHref={contactHref} />
+      {/* La barra de Cómo llegar y Contactar solo se muestra en producción, no en local. */}
+      {process.env.NODE_ENV === 'production' && <BottomBar mapHref={mapHref} contactHref={contactHref} />}
     </main>
   );
 }

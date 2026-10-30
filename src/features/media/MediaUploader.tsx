@@ -18,6 +18,7 @@ export function MediaUploader({ file, onChange, onError }: MediaUploaderProps) {
 
   useEffect(() => {
     if (!file) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- la vista previa depende de un recurso externo (URL de objeto)
       setPreview(null);
       return;
     }

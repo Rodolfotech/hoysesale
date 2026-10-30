@@ -18,6 +18,7 @@ interface Props {
 export function EventsCarouselGrid({ events, loading, title, subtitle }: Props) {
   const [page, setPage] = useState(0);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- volver a la primera página cuando cambia la lista
   useEffect(() => { setPage(0); }, [events]);
 
   const totalPages = Math.ceil(events.length / PAGE_SIZE);
