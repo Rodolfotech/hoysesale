@@ -2,6 +2,13 @@
 
 Plan para mejorar la seguridad y la escalabilidad del proyecto. Cada tarea tiene un criterio de éxito verificable.
 
+## Estado actual (actualizado con el código de `main`)
+
+- **Hecho en el código:** validaciones de entrada en servidor (teléfono, Instagram, URL, horarios, imágenes), autorización de eventos, asistentes y perfil, cron con secreto, webhook sin token por defecto, límite de login y límite global por IP (en memoria).
+- **Pendiente en producción:** migraciones de la base (incluida `aboutImages`). Mientras tanto, `aboutImages` está omitido en consultas para no romper login ni micro-sitios.
+- **Pendiente en el código:** lint (20 errores, la mayoría heredados), pruebas de API dentro del repositorio, caché de la página del negocio.
+- **Lecciones aplicadas:** ver la sección "Errores que ya cometimos" en `README.md`.
+
 ## Fase 0: desbloquear producción (prioridad inmediata)
 
 1. **Aplicar las migraciones en producción.**
