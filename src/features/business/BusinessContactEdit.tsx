@@ -2,7 +2,7 @@
 
 import { useId, useState } from 'react';
 import { apiErrorMessage } from '@/lib/api-error';
-import { ADDRESS_LABELS, INSTAGRAM_LABELS, PHONE_LABELS, WEBSITE_LABELS, type AddressLabel, type InstagramLabel, type PhoneLabel, type WebsiteLabel } from '@/lib/business';
+import { ADDRESS_LABELS, DEFAULT_INSTAGRAM_LABEL, DEFAULT_PHONE_LABEL, DEFAULT_WEBSITE_LABEL, INSTAGRAM_LABELS, PHONE_LABELS, WEBSITE_LABELS, type AddressLabel, type InstagramLabel, type PhoneLabel, type WebsiteLabel } from '@/lib/business';
 import { businessApi, usersApi } from '../../api';
 import { Button } from '../../components/ui/Button';
 import { EditableField } from '../../components/ui/EditableField';
@@ -29,19 +29,17 @@ export interface BusinessContact {
 interface LabelSelectProps<T extends string> {
   label: string;
   options: readonly T[];
-  value: T | '';
-  onChange: (value: T | '') => void;
-  emptyLabel?: string; // opción para no mostrar texto
+  value: T;
+  onChange: (value: T) => void;
 }
 
 // Select del texto que acompaña a un dato de contacto.
-function LabelSelect<T extends string>({ label, options, value, onChange, emptyLabel }: LabelSelectProps<T>) {
+function LabelSelect<T extends string>({ label, options, value, onChange }: LabelSelectProps<T>) {
   const id = useId();
   return (
     <div>
       <label htmlFor={id} className="block text-sm mb-1" style={{ color: '#1D1D1F' }}>{label}</label>
-      <select id={id} value={value} onChange={(e) => onChange(e.target.value as T | '')} className="w-full px-3 py-2.5 rounded-xl text-sm light-form" style={{ color: '#1D1D1F' }}>
-        {emptyLabel && <option value="">{emptyLabel}</option>}
+      <select id={id} value={value} onChange={(e) => onChange(e.target.value as T)} className="w-full px-3 py-2.5 rounded-xl text-sm light-form" style={{ color: '#1D1D1F' }}>
         {options.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
     </div>
@@ -52,15 +50,15 @@ function ContactDialog({ contact, onClose, onSaved }: { contact: BusinessContact
   const [initialStreet, initialNumber] = splitAddress(contact.address);
   const [street, setStreet] = useState(initialStreet);
   const [number, setNumber] = useState(initialNumber);
-  const [addressLabel, setAddressLabel] = useState<AddressLabel | ''>(contact.addressLabel ?? ADDRESS_LABELS[0]);
+  const [addressLabel, setAddressLabel] = useState<AddressLabel>(contact.addressLabel ?? ADDRESS_LABELS[0]);
   const [phone, setPhone] = useState(phoneDigitsFrom(contact.phone));
-  const [phoneLabel, setPhoneLabel] = useState<PhoneLabel | ''>(contact.phoneLabel ?? '');
+  const [phoneLabel, setPhoneLabel] = useState<PhoneLabel>(contact.phoneLabel ?? DEFAULT_PHONE_LABEL);
   const [instagram, setInstagram] = useState(instagramHandleFrom(contact.instagram));
   const [savedInstagram, setSavedInstagram] = useState(instagram);
-  const [instagramLabel, setInstagramLabel] = useState<InstagramLabel | ''>(contact.instagramLabel ?? INSTAGRAM_LABELS[0]);
+  const [instagramLabel, setInstagramLabel] = useState<InstagramLabel>(contact.instagramLabel ?? DEFAULT_INSTAGRAM_LABEL);
   const [website, setWebsite] = useState(websiteRestFrom(contact.website));
   const [savedWebsite, setSavedWebsite] = useState(website);
-  const [websiteLabel, setWebsiteLabel] = useState<WebsiteLabel | ''>(contact.websiteLabel ?? WEBSITE_LABELS[0]);
+  const [websiteLabel, setWebsiteLabel] = useState<WebsiteLabel>(contact.websiteLabel ?? DEFAULT_WEBSITE_LABEL);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -88,7 +86,7 @@ function ContactDialog({ contact, onClose, onSaved }: { contact: BusinessContact
         companyAddress: [street.trim(), number].filter(Boolean).join(' '),
         companyPhone: phone ? `${PHONE_PREFIX}${phone}` : null,
       });
-      await businessApi.updateMe({ phoneLabel: phoneLabel || null, addressLabel: addressLabel || null, instagramLabel: instagramLabel || null, websiteLabel: websiteLabel || null });
+      await businessApi.updateMe({ phoneLabel, addressLabel, instagramLabel, websiteLabel });
       onClose();
       onSaved();
     } catch (err) {
@@ -119,7 +117,7 @@ function ContactDialog({ contact, onClose, onSaved }: { contact: BusinessContact
         hint="Ingresa un teléfono válido para que te comuniques con tus clientes."
         info={<p>Agrega un teléfono de la empresa que permita atención al cliente, dudas, respuestas o directamente contacto para atender pedidos.</p>}
       />
-      <LabelSelect label="Texto del teléfono" options={PHONE_LABELS} value={phoneLabel} onChange={setPhoneLabel} emptyLabel="Sin texto" />
+      <LabelSelect label="Texto del teléfono" options={PHONE_LABELS} value={phoneLabel} onChange={setPhoneLabel} />
       <EditableField
         label="Instagram"
         onCancel={() => setInstagram(savedInstagram)}

@@ -9,7 +9,7 @@ import { useAboutImages } from './useAboutImages';
 import { useIsOwner } from './useIsOwner';
 import { useRefresh } from '@/hooks/useRefresh';
 
-function AboutImagesDialog({ images, onClose, onSaved }: { images: string[]; onClose: () => void; onSaved: () => void }) {
+function AboutImagesDialog({ images, title, onClose, onSaved }: { images: string[]; title: string; onClose: () => void; onSaved: () => void }) {
   const { items, setItems, save } = useAboutImages(images);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -29,7 +29,7 @@ function AboutImagesDialog({ images, onClose, onSaved }: { images: string[]; onC
 
   return (
     <div className="p-6 space-y-4">
-      <h2 className="text-lg font-semibold" style={{ color: '#1D1D1F' }}>Editar fotos</h2>
+      <h2 className="text-lg font-semibold" style={{ color: '#1D1D1F' }}>{title}</h2>
       <AboutImages items={items} onChange={setItems} />
       <div className="flex flex-wrap items-center justify-end gap-3">
         {error && <p role="alert" className="text-sm mr-auto" style={{ color: '#DC2626' }}>{error}</p>}
@@ -46,7 +46,7 @@ interface AboutImagesEditProps {
   className?: string; // posición del botón
 }
 
-// Botón Editar de las fotos de "Nosotros" en el micro-sitio. Solo lo ve el dueño.
+// Botón de las fotos de "Nosotros": Agregar imagen si no hay ninguna, Editar si ya hay. Solo lo ve el dueño.
 export function AboutImagesEdit({ slug, images, className = '' }: AboutImagesEditProps) {
   const isOwner = useIsOwner(slug);
   const { refresh, refreshing } = useRefresh();
@@ -54,11 +54,14 @@ export function AboutImagesEdit({ slug, images, className = '' }: AboutImagesEdi
 
   if (!isOwner) return null;
 
+  const empty = images.length === 0;
+  const title = empty ? 'Agregar imagen' : 'Editar fotos';
+
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)} disabled={refreshing} className={className} aria-label="Editar fotos">Editar</Button>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)} disabled={refreshing} className={className} aria-label={title}>{empty ? title : 'Editar'}</Button>
       <Modal isOpen={open} onClose={() => setOpen(false)} maxWidth="2xl">
-        <AboutImagesDialog images={images} onClose={() => setOpen(false)} onSaved={refresh} />
+        <AboutImagesDialog images={images} title={title} onClose={() => setOpen(false)} onSaved={refresh} />
       </Modal>
     </>
   );

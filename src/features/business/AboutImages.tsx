@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { X } from 'lucide-react';
 import { Popover } from '@/components/ui/Popover';
 import { useFileDrop } from '@/hooks/useFileDrop';
 import { ABOUT_MAX_IMAGES, MAX_IMAGE_BYTES } from '@/lib/media-limits';
@@ -83,13 +84,21 @@ export function AboutImages({ items, onChange }: AboutImagesProps) {
               onDragOver={(e) => { if (draggedIndex !== null) { e.preventDefault(); setTargetIndex(index); } }}
               onDrop={(e) => { if (draggedIndex !== null) { e.preventDefault(); move(draggedIndex, index); endDrag(); } }}
               onDragEnd={endDrag}
-              className="space-y-1 cursor-move"
+              className="relative cursor-move"
               style={{ opacity: draggedIndex === index ? 0.5 : 1 }}
             >
               <div className="aspect-[4/3] overflow-hidden rounded-xl" style={{ border: `${targetIndex === index ? '2px solid #2563EB' : '1px solid #E4EBFA'}` }}>
                 <img src={item.url} alt="Foto del negocio" draggable={false} className="w-full h-full object-cover" />
               </div>
-              <button type="button" onClick={() => remove(item)} className="text-xs underline cursor-pointer" style={{ color: '#DC2626' }}>Quitar</button>
+              <button
+                type="button"
+                onClick={() => remove(item)}
+                aria-label={`Quitar foto ${index + 1}`}
+                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center shadow cursor-pointer hover:opacity-80"
+                style={{ backgroundColor: '#FFFFFF', color: '#1D1D1F' }}
+              >
+                <X className="w-3.5 h-3.5" aria-hidden="true" />
+              </button>
             </li>
           ))}
         </ul>

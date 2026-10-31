@@ -10,8 +10,8 @@ import { BusinessImageEdit } from '@/features/business/BusinessImageEdit';
 import { BusinessTabs } from '@/features/business/BusinessTabs';
 import { ContactVisibility } from '@/features/business/ContactVisibility';
 import { TabVisibilitySwitch } from '@/features/business/TabVisibilitySwitch';
+import { OfferItemAdd } from '@/features/business/OfferItemAdd';
 import { BusinessOwnerBar } from '@/features/business/BusinessOwnerBar';
-import { productsToOffer, servicesToOffer } from '@/features/business/offer';
 import { ImageCarousel } from '@/components/ui/ImageCarousel';
 import { AmenityList } from '@/features/business/AmenityList';
 import { ProductsSection } from '@/features/business/ProductsSection';
@@ -22,7 +22,7 @@ import { BottomBar } from '@/features/business/BottomBar';
 import { Card } from '@/components/ui/Card';
 import { Stat } from '@/components/ui/Stat';
 import { BUSINESS_AMENITIES } from '@/constants/business';
-import { ADDRESS_LABELS, INSTAGRAM_LABELS, SITE_URL, WEBSITE_LABELS, type Business } from '@/lib/business';
+import { ADDRESS_LABELS, DEFAULT_INSTAGRAM_LABEL, DEFAULT_PHONE_LABEL, DEFAULT_WEBSITE_LABEL, SITE_URL, type Business } from '@/lib/business';
 
 // Interruptor bajo el título de una pestaña. Sin 'use client': el interruptor solo aparece para el dueño.
 function TabToolbar(props: ComponentProps<typeof TabVisibilitySwitch>) {
@@ -67,23 +67,10 @@ export default function BusinessPage({ business }: { business: Business }) {
 
   const ownerInitial = {
     slug: business.slug,
-    name: business.name,
-    comuna: business.comuna,
-    category: business.category,
-    companyAddress: business.companyAddress,
     companyPhone: business.companyPhone,
-    companyInstagram: business.companyInstagram,
     website: business.website,
     whatsappReservations: business.whatsappReservations,
     mapUrl: business.mapUrl,
-    businessDescription: business.businessDescription,
-    amenities: business.amenities,
-    hours: business.hours,
-    aboutImages: business.aboutImages,
-    products: productsToOffer(business.products),
-    services: servicesToOffer(business.services),
-    logoUrl: business.logoUrl,
-    coverUrl: business.coverUrl,
   };
 
   const contactCard = (
@@ -95,9 +82,9 @@ export default function BusinessPage({ business }: { business: Business }) {
       />
       <div className="space-y-2">
         {business.companyAddress && <p><span className="font-semibold">{business.addressLabel ?? ADDRESS_LABELS[0]}:</span> {business.companyAddress}{business.comuna ? `, ${business.comuna}` : ''}</p>}
-        {business.companyPhone && <p>{business.phoneLabel && <span className="font-semibold">{business.phoneLabel}: </span>}{business.companyPhone}</p>}
-        {instagram && <p><span className="font-semibold">{business.instagramLabel ?? INSTAGRAM_LABELS[0]}:</span> <a href={instagram} target="_blank" rel="noopener noreferrer" className="underline text-brand-blue">{instagramHandle}</a></p>}
-        {business.website && <p><span className="font-semibold">{business.websiteLabel ?? WEBSITE_LABELS[0]}:</span> <a href={business.website} target="_blank" rel="noopener noreferrer" className="underline text-brand-blue">{business.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}</a></p>}
+        {business.companyPhone && <p><span className="font-semibold">{business.phoneLabel ?? DEFAULT_PHONE_LABEL}:</span> {business.companyPhone}</p>}
+        {instagram && <p><span className="font-semibold">{business.instagramLabel ?? DEFAULT_INSTAGRAM_LABEL}:</span> <a href={instagram} target="_blank" rel="noopener noreferrer" className="underline text-brand-blue">{instagramHandle}</a></p>}
+        {business.website && <p><span className="font-semibold">{business.websiteLabel ?? DEFAULT_WEBSITE_LABEL}:</span> <a href={business.website} target="_blank" rel="noopener noreferrer" className="underline text-brand-blue">{business.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}</a></p>}
       </div>
     </Card>
   );
@@ -108,14 +95,14 @@ export default function BusinessPage({ business }: { business: Business }) {
       label: 'Productos',
       content: (
             <section aria-labelledby="productos-titulo">
-          <ProductsSection slug={business.slug} toolbar={<TabVisibilitySwitch tab="productos" name="Productos" />} products={business.products} businessName={business.name} whatsapp={reservationsPhone} />
+          <ProductsSection slug={business.slug} toolbar={<><TabVisibilitySwitch tab="productos" name="Productos" /><OfferItemAdd slug={business.slug} type="products" amenities={business.amenities ?? []} /></>} products={business.products} businessName={business.name} whatsapp={reservationsPhone} />
             </section>      ),
     },
     {
       id: 'servicios',
       label: 'Servicios',
       content: (
-          <ServicesSection slug={business.slug} toolbar={<TabVisibilitySwitch tab="servicios" name="Servicios" />} services={business.services} businessName={business.name} whatsapp={reservationsPhone} />
+          <ServicesSection slug={business.slug} toolbar={<><TabVisibilitySwitch tab="servicios" name="Servicios" /><OfferItemAdd slug={business.slug} type="services" amenities={business.amenities ?? []} /></>} services={business.services} businessName={business.name} whatsapp={reservationsPhone} />
       ),
     },
     {
@@ -225,7 +212,6 @@ export default function BusinessPage({ business }: { business: Business }) {
             slug={business.slug}
             pageUrl={pageUrl}
             initial={ownerInitial}
-            content={{ products: business.products, services: business.services, highlights: business.highlights }}
           />
         </div>
 

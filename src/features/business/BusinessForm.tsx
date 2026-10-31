@@ -2,25 +2,17 @@
 
 import { usePersistentState } from '@/hooks/usePersistentState';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { PhoneInput, phoneDigitsFrom } from '@/components/ui/PhoneInput';
 import { Popover } from '@/components/ui/Popover';
 import { EditableField } from '@/components/ui/EditableField';
 import { UnderlineTabs } from '@/components/ui/UnderlineTabs';
-import { BusinessScheduleForm } from './BusinessScheduleForm';
-import { OfferItems, type OfferItem } from './OfferItems';
-import { AboutImages } from './AboutImages';
-import { useAboutImages } from './useAboutImages';
-import { BusinessDescriptionField } from './BusinessDescriptionField';
-import { BusinessImagePicker } from './BusinessImagePicker';
 import { WebsiteInput, websiteError, websiteRestFrom, websiteValueFrom } from '@/components/ui/WebsiteInput';
 import { InstagramInput, instagramHandleFrom, instagramValueFrom } from '@/components/ui/InstagramInput';
 import { FormInput } from '../../components/ui/FormInput';
 import { apiErrorMessage } from '@/lib/api-error';
-import { cleanBusinessHours } from '@/lib/hours';
 import { businessApi } from '../../api';
 import { COMUNAS } from '../../constants/comunas';
-import { BUSINESS_CATEGORIES, BUSINESS_AMENITIES, AMENITY_LABELS } from '../../constants/business';
+import { BUSINESS_CATEGORIES } from '../../constants/business';
 
 import { BUSINESS_DAYS } from '../../constants/business';
 export { BUSINESS_DAYS };
@@ -50,27 +42,14 @@ export function slugifyName(text: string): string {
 }
 
 export interface BusinessFormInitial {
-  aboutImages?: string[];
-  products?: OfferItem[];
-  services?: OfferItem[];
   slug?: string | null;
-  name?: string | null;
-  comuna?: string | null;
-  category?: string | null;
-  companyAddress?: string | null;
   companyPhone?: string | null;
-  companyInstagram?: string | null;
   website?: string | null;
   whatsappReservations?: string | null;
   mapUrl?: string | null;
-  businessDescription?: string | null;
-  amenities?: string[] | null;
-  hours?: Record<string, string> | null;
-  logoUrl?: string | null;
-  coverUrl?: string | null;
 }
 
-// Solo lo que se edita en el micro-sitio. Nombre, dirección, teléfono, Instagram, comuna y categoría vienen del perfil.
+// URL, sitio web y botones de la barra. Lo demás se agrega y cambia con los botones de la propia página.
 // null borra el dato guardado.
 export interface BusinessFormPayload {
   slug?: string;
@@ -78,9 +57,6 @@ export interface BusinessFormPayload {
   // En la edición solo se envían si cambiaron: undefined no toca el dato guardado.
   whatsappReservations?: string | null;
   mapUrl?: string | null;
-  businessDescription: string | null;
-  amenities: string[];
-  hours: Record<string, string>;
 }
 
 interface BusinessFormProps {
@@ -92,10 +68,8 @@ interface BusinessFormProps {
 }
 
 // Formulario del micro-sitio. Lo usan la creación y la edición (reutilizable, sin lógica de página).
-const TABS = ['contact', 'hours', 'offer', 'about', 'image'] as const;
-const OFFER_TABS = ['products', 'services'] as const;
-const OFFER_TAB_LABELS = { products: 'Productos', services: 'Servicios' } as const;
-const TAB_LABELS = { contact: 'Encuéntranos', hours: 'Horario', offer: 'Oferta', about: 'Nosotros', image: 'Identidad' } as const;
+const TABS = ['contact'] as const;
+const TAB_LABELS = { contact: 'Encuéntranos' } as const;
 
 const whatsappValue = (digits: string) => (digits ? `+569${digits}` : null);
 
@@ -131,28 +105,14 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
   const savedMapUrl = initial.mapUrl ?? '';
   const [editWhatsapp, setEditWhatsapp] = useState(savedWhatsapp);
   const [editMapUrl, setEditMapUrl] = useState(savedMapUrl);
-  const [description, setDescription] = usePersistentState(`${draftKey}:description`, initial.businessDescription ?? '');
-  const [amenities, setAmenities] = usePersistentState<string[]>(`${draftKey}:amenities`, initial.amenities ?? []);
-  const [hours, setHours] = usePersistentState<Record<string, string>>(`${draftKey}:hours`, initial.hours ?? {});
-  const [logoUrl, setLogoUrl] = usePersistentState<string | null>(`${draftKey}:logoUrl`, initial.logoUrl ?? null);
-  const [coverUrl, setCoverUrl] = usePersistentState<string | null>(`${draftKey}:coverUrl`, initial.coverUrl ?? null);
-  const [products, setProducts] = useState<OfferItem[]>(initial.products ?? []);
-  const about = useAboutImages(initial.aboutImages ?? []);
-  const [services, setServices] = useState<OfferItem[]>(initial.services ?? []);
-  const [tab, setTab] = useState<(typeof TABS)[number]>('contact');
-  const [offerTab, setOfferTab] = useState<(typeof OFFER_TABS)[number]>('products');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  const toggleAmenity = (a: string) =>
-    setAmenities((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]));
 
   const submit = async () => {
     setSaving(true);
     setError('');
     try {
       const clearAll = () => ['slug','name','comuna','category','street','number','phone','instagram','website','whatsapp','mapUrl','description','amenities','hours','logoUrl','coverUrl'].forEach((k) => window.sessionStorage.removeItem(`${draftKey}:${k}`));
-      await about.save();
       await onSubmit(
         {
           slug: slug.trim(),
@@ -163,9 +123,6 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
                 ...(editWhatsapp !== savedWhatsapp && { whatsappReservations: whatsappValue(editWhatsapp) }),
                 ...(editMapUrl !== savedMapUrl && { mapUrl: editMapUrl.trim() || null }),
               }),
-          businessDescription: description.trim() || null,
-          amenities,
-          hours: cleanBusinessHours(hours),
         },
       );
       clearAll();
@@ -194,9 +151,8 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
 
   return (
     <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
-      <UnderlineTabs tabs={TABS} labels={TAB_LABELS} active={tab} onChange={setTab} />
+      <UnderlineTabs tabs={TABS} labels={TAB_LABELS} active="contact" onChange={() => undefined} />
 
-      {tab === 'contact' && (
       <div className="space-y-5">
       <div>
         <div className="flex items-center gap-1.5">
@@ -223,7 +179,7 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
         )}
         {slugStatus.available === true && <p className="text-xs mt-1" style={{ color: '#16A34A' }}>URL disponible</p>}
         <p className="text-xs mt-1" style={{ color: '#1D1D1F99' }}>Usa números para que tu URL sea única.</p>
-        {mode === 'create' && <p className="text-xs mt-1" style={{ color: '#1D1D1F99' }}>Puedes cambiarla después desde Editar.</p>}
+        {mode === 'create' && <p className="text-xs mt-1" style={{ color: '#1D1D1F99' }}>Puedes cambiarla después con el botón Encuéntranos.</p>}
       </div>
 
       <WebsiteInput label="Sitio web" value={website} onChange={setWebsite} error={websiteError(website)} />
@@ -247,62 +203,6 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
         )}
       </fieldset>
       </div>
-      )}
-
-      {tab === 'offer' && (
-      <div className="space-y-5">
-      <UnderlineTabs tabs={OFFER_TABS} labels={OFFER_TAB_LABELS} active={offerTab} onChange={setOfferTab} ariaLabel="Oferta" />
-      {/* Con hidden, cambiar de pestaña no borra lo que se está escribiendo. */}
-      <div hidden={offerTab !== 'products'}>
-        <OfferItems type="products" items={products} onChange={setProducts} />
-      </div>
-      <div hidden={offerTab !== 'services'}>
-        <OfferItems type="services" items={services} onChange={setServices} />
-      </div>
-
-      <div className="space-y-3">
-        <p className="text-sm font-semibold" style={{ color: '#1D1D1F' }}>Eventos</p>
-        <p className="text-sm" style={{ color: '#1D1D1F99' }}>Tus eventos aparecen automáticamente en la página del negocio. Para publicar uno nuevo, créalo desde la sección de eventos.</p>
-        <Link href="/create-event" className="inline-block text-sm font-medium underline" style={{ color: '#2563EB' }}>Crear evento</Link>
-      </div>
-
-      <div>
-        <p className={label} style={{ color: '#1D1D1F' }}>Comodidades</p>
-        <div className="flex flex-wrap gap-2">
-          {BUSINESS_AMENITIES.map((a) => (
-            <label key={a} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full cursor-pointer" style={{ border: '1px solid #E4EBFA', backgroundColor: amenities.includes(a) ? '#EFF6FF' : '#FFFFFF' }}>
-              <input type="checkbox" checked={amenities.includes(a)} onChange={() => toggleAmenity(a)} />
-              {AMENITY_LABELS[a] ?? a}
-            </label>
-          ))}
-        </div>
-      </div>
-      </div>
-      )}
-
-      {tab === 'about' && (
-      <div className="space-y-5">
-      <AboutImages items={about.items} onChange={about.setItems} />
-      <BusinessDescriptionField value={description} onChange={setDescription} />
-      </div>
-      )}
-
-      {tab === 'hours' && (
-      <div className="space-y-5">
-      <div>
-        <p className={label} style={{ color: '#1D1D1F' }}>Horarios</p>
-        <BusinessScheduleForm hours={hours} onChange={setHours} />
-      </div>
-      </div>
-      )}
-
-      {tab === 'image' && (
-      <div className="grid grid-cols-2 gap-4">
-        <BusinessImagePicker kind="logo" value={logoUrl} onChange={setLogoUrl} />
-        <BusinessImagePicker kind="cover" value={coverUrl} onChange={setCoverUrl} />
-      </div>
-
-      )}
 
       <div className="flex flex-wrap items-center justify-end gap-3">
         {error && <p role="alert" className="text-sm mr-auto" style={{ color: '#DC2626' }}>{error}</p>}

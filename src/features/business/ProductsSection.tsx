@@ -28,7 +28,7 @@ export function ProductsSection({ slug, toolbar, products, businessName, whatsap
   return (
     <div>
       <h2 id="productos-titulo" className="text-2xl font-semibold text-brand-dark mb-5">Productos</h2>
-      {toolbar && <div className="mb-5 empty:hidden">{toolbar}</div>}
+      {toolbar && <div className="mb-5 flex flex-wrap items-center justify-between gap-3 empty:hidden">{toolbar}</div>}
 
       {products.length === 0 ? (
         <EmptyState>Aún no hay productos publicados.</EmptyState>

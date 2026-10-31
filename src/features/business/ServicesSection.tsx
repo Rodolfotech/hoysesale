@@ -28,7 +28,7 @@ export function ServicesSection({ slug, toolbar, services, businessName, whatsap
   return (
     <section aria-labelledby="servicios-titulo">
       <h2 id="servicios-titulo" className="text-2xl font-semibold mb-5">Servicios</h2>
-      {toolbar && <div className="mb-5 empty:hidden">{toolbar}</div>}
+      {toolbar && <div className="mb-5 flex flex-wrap items-center justify-between gap-3 empty:hidden">{toolbar}</div>}
       {services.length === 0 ? (
         <EmptyState>Aún no hay servicios publicados.</EmptyState>
       ) : (

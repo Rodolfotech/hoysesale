@@ -6,9 +6,7 @@ import { businessApi } from '../../api';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import type { BusinessHighlight, BusinessProduct, BusinessService } from '@/lib/business';
 import { BusinessForm, type BusinessFormInitial, type BusinessFormPayload } from './BusinessForm';
-import { BusinessContentManager } from './BusinessContentManager';
 import { saveBusinessEdits } from './saveBusiness';
 import { useIsOwner } from './useIsOwner';
 
@@ -16,15 +14,13 @@ interface BusinessOwnerBarProps {
   slug: string;
   pageUrl: string;
   initial: BusinessFormInitial;
-  content: { products: BusinessProduct[]; services: BusinessService[]; highlights: BusinessHighlight[] };
 }
 
-// Barra del micro-sitio: "Compartir" para todos; "Editar", "Contenido" y "Ver publicación" solo para el dueño.
-export function BusinessOwnerBar({ slug, pageUrl, initial, content }: BusinessOwnerBarProps) {
+// Barra del micro-sitio: "Compartir" para todos; "Encuéntranos" (editar la página) y "Eliminar página" solo para el dueño.
+export function BusinessOwnerBar({ slug, pageUrl, initial }: BusinessOwnerBarProps) {
   const router = useRouter();
   const isOwner = useIsOwner(slug);
   const [open, setOpen] = useState(false);
-  const [manage, setManage] = useState(false);
   const [copied, setCopied] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -66,11 +62,7 @@ export function BusinessOwnerBar({ slug, pageUrl, initial, content }: BusinessOw
     <div className="flex flex-wrap gap-2 justify-end">
       {isOwner && (
         <>
-          <Button onClick={() => setOpen(true)}>Editar</Button>
-          <Button variant="outline" onClick={() => setManage(true)}>Contenido</Button>
-          <Button variant="outline" href={pageUrl} target="_blank">
-            Ver publicación
-          </Button>
+          <Button onClick={() => setOpen(true)}>Encuéntranos</Button>
           <Button variant="outline" onClick={() => setConfirmDelete(true)} style={{ color: '#DC2626', borderColor: '#DC2626' }}>
             Eliminar página
           </Button>
@@ -100,13 +92,6 @@ export function BusinessOwnerBar({ slug, pageUrl, initial, content }: BusinessOw
             </div>
             <BusinessForm mode="edit" initial={initial} submitLabel="Guardar" onSubmit={save} onCancel={() => setOpen(false)} />
           </Modal>
-          <BusinessContentManager
-            open={manage}
-            onClose={() => setManage(false)}
-            products={content.products}
-            services={content.services}
-            highlights={content.highlights}
-          />
         </>
       )}
     </div>

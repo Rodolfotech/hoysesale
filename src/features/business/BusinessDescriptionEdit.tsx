@@ -9,7 +9,7 @@ import { BusinessDescriptionField } from './BusinessDescriptionField';
 import { useIsOwner } from './useIsOwner';
 import { useRefresh } from '@/hooks/useRefresh';
 
-function DescriptionDialog({ description, onClose, onSaved }: { description: string; onClose: () => void; onSaved: () => void }) {
+function DescriptionDialog({ description, title, onClose, onSaved }: { description: string; title: string; onClose: () => void; onSaved: () => void }) {
   const [value, setValue] = useState(description);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -30,7 +30,7 @@ function DescriptionDialog({ description, onClose, onSaved }: { description: str
 
   return (
     <div className="p-6 space-y-4">
-      <h2 className="text-lg font-semibold" style={{ color: '#1D1D1F' }}>Editar descripción</h2>
+      <h2 className="text-lg font-semibold" style={{ color: '#1D1D1F' }}>{title}</h2>
       <BusinessDescriptionField value={value} onChange={setValue} />
       <div className="flex flex-wrap items-center justify-end gap-3">
         {error && <p role="alert" className="text-sm mr-auto" style={{ color: '#DC2626' }}>{error}</p>}
@@ -47,7 +47,7 @@ interface BusinessDescriptionEditProps {
   className?: string; // posición del botón
 }
 
-// Botón Editar de la descripción en el micro-sitio. Solo lo ve el dueño.
+// Botón de la descripción: Agregar descripción si está vacía, Editar si ya tiene texto. Solo lo ve el dueño.
 export function BusinessDescriptionEdit({ slug, description, className = '' }: BusinessDescriptionEditProps) {
   const isOwner = useIsOwner(slug);
   const { refresh, refreshing } = useRefresh();
@@ -55,11 +55,14 @@ export function BusinessDescriptionEdit({ slug, description, className = '' }: B
 
   if (!isOwner) return null;
 
+  const empty = !description.trim();
+  const title = empty ? 'Agregar descripción' : 'Editar descripción';
+
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)} disabled={refreshing} className={className} aria-label="Editar descripción">Editar</Button>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)} disabled={refreshing} className={className} aria-label={title}>{empty ? title : 'Editar'}</Button>
       <Modal isOpen={open} onClose={() => setOpen(false)} maxWidth="2xl">
-        <DescriptionDialog description={description} onClose={() => setOpen(false)} onSaved={refresh} />
+        <DescriptionDialog description={description} title={title} onClose={() => setOpen(false)} onSaved={refresh} />
       </Modal>
     </>
   );
