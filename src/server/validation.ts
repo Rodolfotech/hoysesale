@@ -125,6 +125,7 @@ export const UpdateEventSchema = z.object({
   address: z.string().nullish(),
   city: z.string().nullish(),
   isOnline: z.boolean().optional(),
+  imageUrl: anyHttpUrl.optional(),
   publicationStartDate: isoDate.nullish(),
   publicationEndDate: isoDate.nullish(),
   categoryName: text().nullish(),

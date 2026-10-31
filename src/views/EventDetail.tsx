@@ -3,6 +3,7 @@
 import { useParams, Link } from '@/lib/router';
 import { useState, useEffect } from 'react';
 import { eventsApi, adminApi } from '../api';
+import { EventMap } from '../features/events/EventMap';
 import { useAuth } from '../context/AuthContext';
 import type { Event } from '../types';
 import {
@@ -87,6 +88,7 @@ export default function EventDetail() {
 
   const priceFromAddress = event.address && !event.address.startsWith('http') ? event.address : null;
   const isFree = !event.price && !priceFromAddress;
+  const location = [event.locationName, priceFromAddress ? undefined : event.address, event.city].filter(Boolean).join(', ');
   const slides = [
     ...(event.imageUrl ? [{ type: 'image' as const, url: event.imageUrl }] : []),
     ...((event.socialFeed || []).filter(p => p.media_url).map(p => ({ type: 'post' as const, post: p }))),
@@ -280,12 +282,12 @@ export default function EventDetail() {
         </div>
 
         {/* Ubicación + Compartir */}
-        {(event.locationName || event.address || event.city) && (
+        {location && (
           <div className="mt-4 flex items-center justify-between px-2">
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 shrink-0" style={{ color: '#2563EB' }} />
               <span className="text-sm" style={{ color: '#1D1D1F99' }}>
-                {[event.locationName, event.address, event.city].filter(Boolean).join(', ')}
+                {location}
               </span>
             </div>
             <button
@@ -300,7 +302,8 @@ export default function EventDetail() {
           </div>
         )}
 
-        {/* Mapa placeholder */}
+        {/* Mapa */}
+        {event.mapEmbedUrl ? <div className="mt-4"><EventMap url={event.mapEmbedUrl} title={event.title} /></div> : (
         <div className="mt-4 rounded-2xl p-16 text-center" style={{ border: '1px solid #E4EBFA', backgroundColor: '#FFFFFF' }}>
           <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center" style={{ backgroundColor: '#E4EBFA' }}>
             <MapPin className="w-6 h-6" style={{ color: '#2563EB' }} />
@@ -310,6 +313,7 @@ export default function EventDetail() {
             {event.locationName ? `Agregar aquí mapa del ${event.locationName}` : 'Mapa no disponible'}
           </p>
         </div>
+        )}
 
       </div>
     </div>

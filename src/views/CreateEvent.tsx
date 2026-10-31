@@ -6,6 +6,7 @@ import { useNavigate } from '@/lib/router';
 import { useAuth } from '../context/AuthContext';
 import { eventsApi, socialApi, attendeesApi, mediaApi } from '../api';
 import { clearCache } from '../api/eventsCache';
+import { formatEntryPrice, parseEntryPrice, priceDigits } from '@/lib/event-price';
 import { ImagePicker } from '../features/media/ImagePicker';
 import { CreateBusinessPage } from '../features/business/CreateBusinessPage';
 import type { Event, SocialPost } from '../types';
@@ -133,6 +134,10 @@ export default function CreateEventPage() {
       setPubError('Sube una imagen para la publicación');
       return;
     }
+    if (!pubFree && !priceDigits(pubPrice)) {
+      setPubError('Ingresa el valor de entrada');
+      return;
+    }
     setPublishing(true);
     setPubError('');
     try {
@@ -148,7 +153,7 @@ export default function CreateEventPage() {
         instagramMediaId: selectedPost?.id || undefined,
         city: pubComuna,
         isOnline: false,
-        address: !pubFree && pubPrice ? pubPrice : undefined,
+        address: pubFree ? undefined : formatEntryPrice(priceDigits(pubPrice)),
       });
       clearCache();
       setManualMode(false);
@@ -399,7 +404,7 @@ export default function CreateEventPage() {
                     {!pubFree && (
                       <div>
                         <label htmlFor="evt-precio" className="block text-xs mb-1" style={{ color: '#1D1D1F' }}>Precio o condición de entrada</label>
-                        <input id="evt-precio" type="text" value={pubPrice} onChange={(e) => setPubPrice(e.target.value)} placeholder="Ej: $5.000 / adhesión voluntaria" className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
+                        <input id="evt-precio" type="text" inputMode="numeric" value={formatEntryPrice(priceDigits(pubPrice))} onChange={(e) => setPubPrice(priceDigits(e.target.value))} placeholder="$precio" className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
                       </div>
                     )}
                   </fieldset>
@@ -414,7 +419,7 @@ export default function CreateEventPage() {
                         <SocialPostMedia post={selectedPost} className="w-full h-auto" />
                       </div>
                     ) : (
-                      <ImagePicker label="Imagen de la publicación" value={manualImageUrl || null} onChange={(url) => { setManualImageUrl(url); setManualError(''); }} onUpload={async (f) => (await mediaApi.uploadTemp(f)).data.url} />
+                      <ImagePicker label="Imagen de la publicación" value={manualImageUrl || null} droppable onChange={(url) => { setManualImageUrl(url); setManualError(''); }} onUpload={async (f) => (await mediaApi.uploadTemp(f)).data.url} />
                     )}
                     {manualError && <p role="alert" className="text-xs mt-1" style={{ color: '#DC2626' }}>{manualError}</p>}
                   </section>
@@ -535,7 +540,9 @@ function PublishedEventCard({ event, isActive, onUpdate }: { event: Event; isAct
   const [eventDate, setEventDate] = useState(format(new Date(event.date), 'yyyy-MM-dd'));
   const [eventTime, setEventTime] = useState(format(new Date(event.date), 'HH:mm'));
   const [comuna, setComuna] = useState(event.city || '');
-  const [tipo, setTipo] = useState(event.address && event.address.startsWith('http') ? 'compra' : 'gratis');
+  const [tipo, setTipo] = useState(event.address ? 'compra' : 'gratis');
+  const [price, setPrice] = useState(parseEntryPrice(event.address));
+  const [priceError, setPriceError] = useState('');
   const [category, setCategory] = useState(event.category?.name || '');
   const [startDate, setStartDate] = useState(
     event.publicationStartDate ? format(new Date(event.publicationStartDate), "yyyy-MM-dd'T'HH:mm") : ''
@@ -543,8 +550,21 @@ function PublishedEventCard({ event, isActive, onUpdate }: { event: Event; isAct
   const [endDate, setEndDate] = useState(
     event.publicationEndDate ? format(new Date(event.publicationEndDate), "yyyy-MM-dd'T'HH:mm") : ''
   );
+  const [imageUrl, setImageUrl] = useState(event.imageUrl || '');
+  const [imageError, setImageError] = useState('');
 
   const handleUpdate = async () => {
+    // Una publicación sin imagen desaparece de Publicaciones activas.
+    if (event.imageUrl && !imageUrl) {
+      setImageError('Sube una imagen para guardar los cambios');
+      return;
+    }
+    // Un enlace de venta antiguo se conserva si no se ingresa un valor.
+    const hasTicketLink = event.address?.startsWith('http');
+    if (tipo !== 'gratis' && !price && !hasTicketLink) {
+      setPriceError('Ingresa el valor de entrada');
+      return;
+    }
     setLoading(true);
     try {
       const description = [subtitle.trim(), descText.trim()].filter(Boolean).join('\n') || event.description;
@@ -554,6 +574,8 @@ function PublishedEventCard({ event, isActive, onUpdate }: { event: Event; isAct
         date: new Date(`${eventDate}T${eventTime}`).toISOString(),
         city: comuna,
         categoryName: category || undefined,
+        imageUrl: imageUrl || undefined,
+        address: tipo === 'gratis' ? null : formatEntryPrice(price) || undefined,
         publicationStartDate: startDate ? new Date(startDate).toISOString() : undefined,
         publicationEndDate: endDate ? new Date(endDate).toISOString() : undefined,
       });
@@ -635,7 +657,7 @@ function PublishedEventCard({ event, isActive, onUpdate }: { event: Event; isAct
           <p style={{ fontSize: '20px', fontWeight: 600, color: '#1D1D1F', fontFamily: "'Raleway', system-ui, sans-serif", marginBottom: '4px' }}>Detalles del evento</p>
           <p style={{ fontSize: '13px', fontWeight: 400, color: '#1D1D1F99', fontFamily: "'Raleway', system-ui, sans-serif", marginBottom: '20px' }}>Completa o ajusta la información extraída desde tu publicación.</p>
 
-          <div className="flex gap-6">
+          <div className="flex flex-col sm:flex-row gap-6">
             <div className="flex-1 space-y-4">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#1D1D1F99' }}>Título</p>
@@ -648,13 +670,25 @@ function PublishedEventCard({ event, isActive, onUpdate }: { event: Event; isAct
                 <p className="text-right text-[10px] mt-0.5" style={{ color: descText.length >= 300 ? '#DC2626' : '#1D1D1F66' }}>{descText.length}/300</p>
               </div>
             </div>
-            <div className="hidden sm:block w-48 shrink-0">
+            <div className="w-full sm:w-48 shrink-0">
               <p className="text-[10px] font-semibold uppercase tracking-wider mb-2 text-center" style={{ color: '#1D1D1F99' }}>Publicación seleccionada</p>
-              {event.imageUrl && (
-                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E4EBFA' }}>
-                  <img src={event.imageUrl} alt="" className="w-full h-auto" />
+              {imageUrl ? (
+                <div className="relative rounded-xl overflow-hidden" style={{ border: '1px solid #E4EBFA' }}>
+                  <img src={imageUrl} alt="" className="w-full h-auto" />
+                  <button
+                    type="button"
+                    onClick={() => setImageUrl('')}
+                    aria-label="Quitar imagen"
+                    className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center shadow cursor-pointer hover:opacity-80"
+                    style={{ backgroundColor: '#FFFFFF', color: '#1D1D1F' }}
+                  >
+                    <X className="w-3.5 h-3.5" aria-hidden="true" />
+                  </button>
                 </div>
+              ) : (
+                <ImagePicker label="Imagen de la publicación" value={null} droppable onChange={(url) => { setImageUrl(url); setImageError(''); }} onUpload={async (f) => (await mediaApi.uploadTemp(f)).data.url} />
               )}
+              {imageError && <p role="alert" className="text-xs mt-1" style={{ color: '#DC2626' }}>{imageError}</p>}
             </div>
           </div>
 
@@ -699,13 +733,14 @@ function PublishedEventCard({ event, isActive, onUpdate }: { event: Event; isAct
               <div style={{ flexShrink: 0 }}>
                 <p style={{ fontSize: '13px', fontWeight: 700, color: '#1D1D1F', fontFamily: "'Raleway', system-ui, sans-serif", marginBottom: '8px' }}>ESTE EVENTO ES GRATUITO</p>
                 <label className="flex items-center gap-2.5 cursor-pointer">
-                  <input type="checkbox" checked={tipo === 'gratis'} onChange={(e) => setTipo(e.target.checked ? 'gratis' : 'compra')} className="w-5 h-5 rounded" style={{ accentColor: '#2563EB' }} />
+                  <input type="checkbox" checked={tipo === 'gratis'} onChange={(e) => { setTipo(e.target.checked ? 'gratis' : 'compra'); setPriceError(''); }} className="w-5 h-5 rounded" style={{ accentColor: '#2563EB' }} />
                   <span style={{ fontSize: '13px', fontWeight: 400, color: '#1D1D1F99', fontFamily: "'Raleway', system-ui, sans-serif" }}>Marca si la entrada no tiene costo.</span>
                 </label>
               </div>
               <div style={{ width: '280px', flexShrink: 0 }}>
                 <p style={{ fontSize: '13px', fontWeight: 700, color: '#1D1D1F', fontFamily: "'Raleway', system-ui, sans-serif", marginBottom: '8px' }}>$ VALOR DE ENTRADA</p>
-                <input type="text" value={tipo === 'gratis' ? '' : (comuna || '')} onChange={() => {}} placeholder="Ej: $5.000 / adhesión voluntaria" disabled={tipo === 'gratis'} className="w-full px-4 py-3 rounded-xl text-sm light-form disabled:opacity-40" />
+                <input type="text" inputMode="numeric" aria-label="Valor de entrada" value={tipo === 'gratis' ? '' : formatEntryPrice(price)} onChange={(e) => { setPrice(priceDigits(e.target.value)); setPriceError(''); }} placeholder="$precio" disabled={tipo === 'gratis'} className="w-full px-4 py-3 rounded-xl text-sm light-form disabled:opacity-40" />
+                {priceError && <p role="alert" className="text-xs mt-1" style={{ color: '#DC2626' }}>{priceError}</p>}
               </div>
               <button
                 type="button"
