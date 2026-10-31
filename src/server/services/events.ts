@@ -2,6 +2,7 @@ import { prisma } from '../db';
 import { Prisma } from '@/generated/prisma/client';
 import { forbidden, notFound, conflict } from '../http';
 import { PUBLIC_USER_SELECT } from '../users/public-user';
+import { mapEmbedUrl } from '@/lib/map-embed';
 import { eventSlug } from '../events/slug';
 import { matchesTimeSlot, type InteractionType, type TimeSlot } from '../events/filters';
 import { businessDayStart } from '@/lib/hours';
@@ -87,16 +88,31 @@ export async function statsForOwner(ownerId: string) {
   });
 }
 
-export function findEventBySlug(slug: string) {
-  return prisma.event.findUnique({
+export async function findEventBySlug(slug: string) {
+  const event = await prisma.event.findUnique({
     where: { slug },
     include: {
-      owner: { select: PUBLIC_USER_SELECT },
+      owner: { select: { ...PUBLIC_USER_SELECT, mapUrl: true, companyAddress: true, hiddenTabs: true, contactInAllTabs: true } },
       category: true,
       attendees: true,
       media: { orderBy: { createdAt: 'desc' } },
     },
   });
+  if (!event) return null;
+
+  // Estos datos solo sirven para ubicar el mapa: el visitante recibe la URL ya armada.
+  const { mapUrl, companyAddress, hiddenTabs, contactInAllTabs, ...owner } = event.owner;
+  // Igual que en el micro-sitio: la dirección no se revela si el dueño ocultó Contáctanos.
+  const addressHidden = hiddenTabs.includes('contactanos') && !contactInAllTabs;
+  const ownPlace = event.locationName || (event.address && /[a-z]/i.test(event.address) && !event.address.startsWith('http') ? event.address : null);
+  const place = (value: string | null) => (value ? [value, event.city].filter(Boolean).join(', ') : null);
+  return {
+    ...event,
+    owner,
+    mapEmbedUrl: ownPlace
+      ? mapEmbedUrl(null, place(ownPlace))
+      : mapEmbedUrl(mapUrl, place(addressHidden ? null : companyAddress), event.city),
+  };
 }
 
 export function eventsByOwner(ownerId: string) {

@@ -39,7 +39,7 @@ export const eventsApi = {
   getBySlug: (slug: string) => api.get<Event>(`/events/${slug}`),
   create: (data: CreateEventPayload) => api.post<Event>('/events', data),
   // publicationEndDate null = visible sin fecha de término (reanudar)
-  update: (id: string, data: Partial<Omit<CreateEventPayload, 'publicationEndDate'>> & { publicationEndDate?: string | null }) =>
+  update: (id: string, data: Partial<Omit<CreateEventPayload, 'publicationEndDate' | 'address'>> & { publicationEndDate?: string | null; address?: string | null }) =>
     api.put<Event>(`/events/${id}`, data),
   delete: (id: string) => api.delete(`/events/${id}`),
   getByOwner: () => api.get<Event[]>('/events/my'),

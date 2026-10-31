@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { eventsApi, adminApi } from '../../api';
+import { EventMap } from './EventMap';
 import { useAuth } from '../../context/AuthContext';
 import type { Event } from '../../types';
 import {
@@ -69,13 +70,12 @@ export function EventDetailContent({ slug, initialEvent }: Props) {
   const [slideIndex, setSlideIndex] = useState(0);
 
   useEffect(() => {
-    if (!initialEvent) {
-      eventsApi.getBySlug(slug).then(({ data }) => {
-        setEvent(data);
-        setLoading(false);
-      });
-    }
-  }, [slug, initialEvent]);
+    // El listado no trae el mapa: el detalle se pide aunque ya haya datos para mostrar.
+    eventsApi.getBySlug(slug).then(({ data }) => {
+      if (data) setEvent(data);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [slug]);
 
   const handleShare = async () => {
     const url = `${window.location.origin}/categorias/${slug}`;
@@ -304,7 +304,8 @@ export function EventDetailContent({ slug, initialEvent }: Props) {
         </button>
       </div>
 
-      {/* ── Mapa placeholder full-width ── */}
+      {/* ── Mapa full-width ── */}
+      {event.mapEmbedUrl ? <EventMap url={event.mapEmbedUrl} title={event.title} /> : event.mapEmbedUrl === null && (
       <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${C.neutral2}`, backgroundColor: '#F1F5F9' }}>
         <div className="rounded-xl m-3 py-10 text-center" style={{ border: '1.5px dashed #CBD5E1', backgroundColor: '#FFFFFF' }}>
           <div className="w-10 h-10 mx-auto mb-2 rounded-full flex items-center justify-center" style={{ backgroundColor: '#EFF6FF' }}>
@@ -316,6 +317,7 @@ export function EventDetailContent({ slug, initialEvent }: Props) {
           </p>
         </div>
       </div>
+      )}
 
     </div>
   );

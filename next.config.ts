@@ -11,6 +11,7 @@ const CONTENT_SECURITY_POLICY = [
   "media-src 'self' blob: https:",
   "font-src 'self' data:",
   "connect-src 'self'",
+  'frame-src https://www.google.com', // mapa de los eventos
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

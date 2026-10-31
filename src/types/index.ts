@@ -56,6 +56,7 @@ export interface Event {
   isOnline: boolean;
   price?: number;
   imageUrl?: string;
+  mapEmbedUrl?: string | null; // solo en el detalle del evento
   socialFeed?: SocialPost[];
   lastSync?: string;
   owner: User;
