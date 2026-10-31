@@ -28,7 +28,7 @@ Lee `README.md` antes de cambiar nada. Este archivo resume lo que un agente debe
 - **Esquema:** cualquier columna nueva necesita migración y agregarla a `prisma/production/pendiente.sql`. Debe aplicarse en producción **antes** de desplegar: sin ella fallan login, registro y micro-sitios.
 - **Límites y validaciones:** los mismos valores en formulario y servidor. Fuentes: `src/lib/media-limits.ts`, `src/lib/hours.ts`, `src/server/validation.ts`.
 - **Campos vacíos:** envía `null`, no `undefined`, para que el servidor borre el dato.
-- **Perfil vs micro-sitio:** nombre, comuna y categoría se editan en el perfil. Dirección, teléfono, Instagram y sitio web son las mismas columnas y también se editan en Contáctanos. El resto del micro-sitio se edita en `BusinessForm` o con los botones Editar de la página.
+- **Perfil vs micro-sitio:** nombre, comuna y categoría se editan en el perfil. Dirección, teléfono, Instagram y sitio web son las mismas columnas y también se editan en Contáctanos. La URL, WhatsApp y cómo llegar se editan en `BusinessForm`; lo demás, con los botones de la página.
 - **Después de cambios:** corre `pnpm exec tsc --noEmit`, `pnpm test` y `pnpm build`. Tras un build o un cambio de esquema reinicia `pnpm dev`; si la página se recarga sola, borra `.next` antes.
 - **Rutas de API:** toda ruta nueva exige sesión. Si debe ser pública, decláralo en `src/app/api/authorization.test.ts`.
 - **Datos privados:** se filtran en el servidor. No basta con ocultarlos en el cliente.
@@ -44,7 +44,7 @@ Lee `README.md` antes de cambiar nada. Este archivo resume lo que un agente debe
 ## Dónde está cada cosa
 
 - Pantallas públicas: `src/views/BusinessPage.tsx`, `src/app/(main)/`.
-- Formulario del negocio: `src/features/business/BusinessForm.tsx` (pestañas) y sus secciones (`OfferItems`, `AboutImages`, `BusinessScheduleForm`, `BusinessImagePicker`).
+- Formulario del negocio: `src/features/business/BusinessForm.tsx` (URL, sitio web y botones de la barra).
 - Edición desde la página: `src/features/business/*Edit.tsx`, `OfferItemActions`, `TabVisibilitySwitch`, `ContactVisibility`.
 - Perfil: `src/views/Profile.tsx`.
 - API: `src/app/api/` y lógica en `src/server/services/`. Límites: `src/server/rate-limit.ts`.

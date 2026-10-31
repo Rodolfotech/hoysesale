@@ -9,18 +9,21 @@ export const BUSINESS_DESCRIPTION_MAX = 2000;
 // Textos que el negocio puede poner junto a su teléfono.
 export const PHONE_LABELS = ['Llámanos', 'Llámanos al', 'Haz tu pedido al', 'Reserva al', 'Atención', 'Consultas', 'Contacto'] as const;
 export type PhoneLabel = (typeof PHONE_LABELS)[number];
+export const DEFAULT_PHONE_LABEL: PhoneLabel = 'Llámanos al';
 
 // Textos que el negocio puede poner junto a su dirección. El primero se usa por defecto.
 export const ADDRESS_LABELS = ['Dirección', 'Ubicación', 'Dónde estamos', 'Visítanos en'] as const;
 export type AddressLabel = (typeof ADDRESS_LABELS)[number];
 
-// Textos que el negocio puede poner junto a su Instagram. El primero se usa por defecto.
+// Textos que el negocio puede poner junto a su Instagram.
 export const INSTAGRAM_LABELS = ['Instagram', 'Síguenos en Instagram', 'Nuestro Instagram', 'Síguenos', 'Ver', 'Conoce más en Instagram', 'Descubre nuestras novedades'] as const;
 export type InstagramLabel = (typeof INSTAGRAM_LABELS)[number];
+export const DEFAULT_INSTAGRAM_LABEL: InstagramLabel = 'Síguenos en Instagram';
 
-// Textos que el negocio puede poner junto a su sitio web. El primero se usa por defecto.
+// Textos que el negocio puede poner junto a su sitio web.
 export const WEBSITE_LABELS = ['Sitio web', 'Página web', 'Web', 'Web oficial', 'Visitar sitio web', 'Ir al sitio web', 'Conoce más en nuestra web', 'Sitio oficial'] as const;
 export type WebsiteLabel = (typeof WEBSITE_LABELS)[number];
+export const DEFAULT_WEBSITE_LABEL: WebsiteLabel = 'Página web';
 
 // Pestañas del micro-sitio que el dueño puede ocultar a los visitantes.
 export const HIDEABLE_TABS = ['contactanos', 'eventos', 'horario', 'productos', 'resenas', 'servicios'] as const;

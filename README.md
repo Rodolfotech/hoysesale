@@ -50,7 +50,7 @@ src/
 │                             # FormInput, PhoneInput, InstagramInput, WebsiteInput...
 ├── features/
 │   ├── business/             # Micro-sitio
-│   │                         # Formulario: BusinessForm, OfferItems, OfferItemForm, AboutImages,
+│   │                         # Formulario: BusinessForm, OfferItemForm, OfferExtras, AboutImages,
 │   │                         #   BusinessScheduleForm, BusinessImagePicker, BusinessDescriptionField
 │   │                         # Página pública: BusinessTabs, ProductsSection, ServicesSection, EventsCountdown,
 │   │                         #   ReviewsSection, BusinessHoursCard, BusinessStatusBadge, AmenityList, BottomBar
@@ -86,7 +86,7 @@ prisma/
 
 - **El perfil es la fuente de verdad** de nombre, comuna y categoría de la empresa. Se editan en **Perfil → Datos de empresa**.
 - **Datos de contacto:** dirección, teléfono, Instagram y sitio web son las mismas columnas de `users`. Se editan en el perfil o con **Editar** en la pestaña Contáctanos, y el cambio se ve en ambos lados. Instagram y sitio web avisan esto antes de guardar.
-- **El resto del micro-sitio** se edita desde **Crear página** y **Editar página** (mismo `BusinessForm`) o con los botones **Editar** de la propia página, que solo ve el dueño.
+- **El resto del micro-sitio:** la URL, el WhatsApp y cómo llegar se editan en `BusinessForm`. Todo lo demás se edita con los botones de la propia página, que solo ve el dueño.
 - Al crear la página, la URL se calcula desde el nombre del perfil. El servidor también toma nombre y dirección del perfil si la petición no los trae.
 - **Campos obligatorios para crear:** URL disponible. Nombre y dirección vienen del perfil y deben estar completos ahí.
 - **Vaciar un campo:** el formulario envía `null` para los campos opcionales vacíos. Un `undefined` no se guarda y deja el valor anterior.
@@ -126,7 +126,7 @@ Solo los ve el dueño (`useIsOwner`). El servidor valida cada cambio por separad
 - **Portada:** reemplazar la imagen. Logo y portada aceptan arrastrar archivos.
 - **Fotos de Nosotros:** agregar, quitar, arrastrar archivos y reordenar. Se publican con Guardar.
 - **Descripción, Horario y Contacto:** cada uno con su Editar y su ventana.
-- **Productos y servicios:** Editar y Eliminar en cada tarjeta. Eliminar pide confirmación.
+- **Productos y servicios:** Editar y Eliminar en cada tarjeta. Eliminar pide confirmación. Agregar producto y Agregar servicio abren su formulario con Eventos y Comodidades (`OfferExtras`); allí cada comodidad se guarda al marcarla.
 - **Eventos:** Ir a publicaciones activas (`/create-event?tab=activas`).
 - **Interruptores:** Ocultar pestaña en Contáctanos, Eventos, Horario, Productos, Reseñas y Servicios. Nosotros siempre queda visible. En Contáctanos, Mostrar en todas las pestañas pone los datos de contacto debajo de cada una.
 
@@ -135,19 +135,19 @@ Solo los ve el dueño (`useIsOwner`). El servidor valida cada cambio por separad
 | Dato | Opciones | Por defecto |
 |---|---|---|
 | Dirección | Dirección, Ubicación, Dónde estamos, Visítanos en | Dirección |
-| Teléfono | Llámanos, Llámanos al, Haz tu pedido al, Reserva al, Atención, Consultas, Contacto | Sin texto |
-| Instagram | Instagram, Síguenos en Instagram, Nuestro Instagram, Síguenos, Ver, Conoce más en Instagram, Descubre nuestras novedades | Instagram |
-| Sitio web | Sitio web, Página web, Web, Web oficial, Visitar sitio web, Ir al sitio web, Conoce más en nuestra web, Sitio oficial | Sitio web |
+| Teléfono | Llámanos, Llámanos al, Haz tu pedido al, Reserva al, Atención, Consultas, Contacto | Llámanos al |
+| Instagram | Instagram, Síguenos en Instagram, Nuestro Instagram, Síguenos, Ver, Conoce más en Instagram, Descubre nuestras novedades | Síguenos en Instagram |
+| Sitio web | Sitio web, Página web, Web, Web oficial, Visitar sitio web, Ir al sitio web, Conoce más en nuestra web, Sitio oficial | Página web |
 
-Las listas están en `src/lib/business.ts` y el servidor rechaza cualquier otro valor. Se muestran con dos puntos: `Reserva al: +569...`.
+Las listas están en `src/lib/business.ts` y el servidor rechaza cualquier otro valor. Instagram y sitio web solo se muestran si el negocio los tiene. Se muestran con dos puntos: `Reserva al: +569...`.
 
-## Formulario del negocio (pestañas)
+## Formulario del negocio
 
-1. **Encuéntranos:** URL (con validación de disponibilidad en vivo), sitio web (prefijo `https://`), WhatsApp y cómo llegar. Al editar la página, WhatsApp y cómo llegar están bloqueados y cada uno tiene su botón Editar (`EditableField`); se guardan con el botón Guardar del pie del formulario, que solo los envía si cambiaron.
-2. **Horario:** administrador de horarios (`BusinessScheduleForm`): apertura y cierre en 24 horas, hasta 3 turnos por día, selector `Horario normal` / `Cerrado` y fechas especiales.
-3. **Oferta:** pestañas Productos y Servicios, ambos con imagen (alta, edición y baja inmediata), eventos (enlace para crear) y comodidades.
-4. **Nosotros:** fotos del negocio (carrusel en la página pública) y descripción. Quitar, agregar y reordenar fotos queda pendiente hasta presionar Guardar.
-5. **Identidad:** logo y portada.
+**Crear página** y **Editar página** (botón Encuéntranos del micro-sitio) usan `BusinessForm`, con una sola pestaña:
+
+- **Encuéntranos:** URL (con validación de disponibilidad en vivo), sitio web (prefijo `https://`), WhatsApp y cómo llegar. Al editar, WhatsApp y cómo llegar están bloqueados y cada uno tiene su botón Editar (`EditableField`). Se guardan con Guardar, que solo los envía si cambiaron.
+
+Horario, productos, servicios, comodidades, descripción, fotos, logo y portada se agregan y cambian con los botones de la propia página.
 
 El dueño también puede eliminar la página desde el micro-sitio. Se borra solo el micro-sitio; el perfil, la cuenta y los eventos se conservan.
 

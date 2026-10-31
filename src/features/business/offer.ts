@@ -16,8 +16,4 @@ export interface OfferItem {
 
 export const productToOffer = (p: BusinessProduct): OfferItem => ({ id: p.id, name: p.name, description: p.description, price: p.price, imageUrl: p.imageUrl });
 
-export const productsToOffer = (products: BusinessProduct[]): OfferItem[] => products.map(productToOffer);
-
 export const serviceToOffer = (s: BusinessService): OfferItem => ({ id: s.id, name: s.title, description: s.description, imageUrl: s.imageUrl, tags: s.tags });
-
-export const servicesToOffer = (services: BusinessService[]): OfferItem[] => services.map(serviceToOffer);
