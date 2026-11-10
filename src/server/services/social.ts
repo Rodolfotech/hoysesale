@@ -160,7 +160,10 @@ export async function connectFacebook(userId: string, accessToken: string) {
 
 export function disconnect(userId: string, platform: string) {
   const clear = { socialToken: null, tokenExpiresAt: null };
-  const data = platform === 'instagram' ? { instagramId: null, ...clear } : { facebookId: null, ...clear };
+  // Desconectar suprime todo lo que vino de Instagram, como hace la eliminación pedida desde Meta.
+  const data = platform === 'instagram'
+    ? { instagramId: null, instagramUsername: null, instagramAvatar: null, ...clear }
+    : { facebookId: null, ...clear };
   return prisma.user.update({ where: { id: userId }, data, omit: { password: true } });
 }
 

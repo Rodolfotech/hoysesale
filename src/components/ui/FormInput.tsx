@@ -2,6 +2,7 @@
 
 import { useId, useRef, useEffect } from 'react';
 import type { LucideIcon } from 'lucide-react';
+import { Popover } from './Popover';
 
 interface FormInputProps {
   id?: string;
@@ -17,6 +18,7 @@ interface FormInputProps {
   filledBg?: string;
   maxLength?: number;
   inputMode?: 'numeric' | 'text' | 'tel' | 'email';
+  info?: React.ReactNode; // texto del botón de información junto al nombre
 }
 
 export function FormInput({
@@ -33,6 +35,7 @@ export function FormInput({
   filledBg,
   maxLength,
   inputMode,
+  info,
 }: FormInputProps) {
   const generatedId = useId();
   const inputId = propId ?? generatedId;
@@ -46,7 +49,7 @@ export function FormInput({
 
   return (
     <div>
-      {label && (
+      {label && !info && (
         <label
           htmlFor={inputId}
           className="block text-sm font-medium mb-1.5"
@@ -54,6 +57,14 @@ export function FormInput({
         >
           {label}
         </label>
+      )}
+      {label && info && (
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <label htmlFor={inputId} className="block text-sm font-medium" style={{ color: '#1D1D1F', fontSize: '14px' }}>
+            {label}
+          </label>
+          <Popover label={`Información de ${label.toLowerCase()}`}>{info}</Popover>
+        </div>
       )}
       <div className="relative">
         {Icon && (

@@ -135,14 +135,14 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
 
   const whatsappField = (value: string, onChange: (digits: string) => void) => (
     <>
-      <PhoneInput label="WhatsApp del botón Contactar" value={value} onChange={onChange} />
+      <PhoneInput label="WhatsApp del botón Contactar" value={value} onChange={onChange} info={<p>Ingresa el teléfono de atención al cliente. Lo puedes agregar más adelante.</p>} />
       <p className="text-xs mt-1" style={{ color: '#1D1D1F99' }}>También se usa para reservas y pedidos. Si lo dejas vacío, se usa el teléfono.</p>
     </>
   );
 
   const mapUrlField = (value: string, onChange: (url: string) => void) => (
     <>
-      <FormInput label="Enlace del botón Cómo llegar" value={value} onChange={(e) => onChange(e.target.value)} placeholder="https://maps.google.com/..." />
+      <FormInput label="Enlace del botón Cómo llegar" value={value} onChange={(e) => onChange(e.target.value)} placeholder="https://maps.google.com/..." info={<p>Agrega la dirección de la empresa para que tus potenciales clientes puedan verla. La puedes agregar más adelante.</p>} />
       <p className="text-xs mt-1" style={{ color: '#1D1D1F99' }}>Google Maps o Waze. Si lo dejas vacío, se usa la dirección exacta.</p>
     </>
   );
@@ -159,6 +159,7 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
           <p className={label} style={{ color: '#1D1D1F99' }}>Dirección de tu página</p>
           <Popover label="Información de la dirección de tu página">
             <p>La URL solo puede tener letras minúsculas y números, hasta 20 caracteres.</p>
+            <p className="mt-1">Debe ser preferentemente el nombre de tu negocio.</p>
           </Popover>
         </div>
         <div className="flex items-center gap-1 text-sm" style={{ color: '#1D1D1F99' }}>
@@ -182,7 +183,7 @@ export function BusinessForm({ mode, initial, submitLabel, onSubmit, onCancel }:
         {mode === 'create' && <p className="text-xs mt-1" style={{ color: '#1D1D1F99' }}>Puedes cambiarla después con el botón Encuéntranos.</p>}
       </div>
 
-      <WebsiteInput label="Sitio web" value={website} onChange={setWebsite} error={websiteError(website)} />
+      <WebsiteInput label="Sitio web" value={website} onChange={setWebsite} error={websiteError(website)} info={<p>Este campo es opcional para que agregues tu sitio web.</p>} />
 
       <fieldset className="rounded-xl p-4 space-y-3" style={{ border: '1px solid #E4EBFA' }}>
         <legend className="px-1 text-sm font-medium" style={{ color: '#1D1D1F' }}>Botones de la barra inferior</legend>

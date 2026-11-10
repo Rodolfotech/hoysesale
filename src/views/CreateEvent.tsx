@@ -2,7 +2,7 @@
 
 import { usePersistentState } from '@/hooks/usePersistentState';
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from '@/lib/router';
+import { Link, useNavigate } from '@/lib/router';
 import { useAuth } from '../context/AuthContext';
 import { eventsApi, socialApi, attendeesApi, mediaApi } from '../api';
 import { clearCache } from '../api/eventsCache';
@@ -25,9 +25,9 @@ import {
 } from 'lucide-react';
 import { SocialPostMedia } from '../features/social/SocialPostMedia';
 import { Pagination } from '../components/ui/Pagination';
+import { Popover } from '../components/ui/Popover';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { COMUNAS } from '../constants/comunas';
 
 type Tab = 'myevents' | 'registered' | 'instagram' | 'upload';
 
@@ -58,7 +58,6 @@ export default function CreateEventPage() {
   const [pubStartDate, setPubStartDate] = usePersistentState('draft:event:pubStartDate', '');
   const [pubEndDate, setPubEndDate] = usePersistentState('draft:event:pubEndDate', '');
   const [pubCategory, setPubCategory] = usePersistentState('draft:event:pubCategory', '');
-  const [pubComuna, setPubComuna] = usePersistentState('draft:event:pubComuna', '');
   const [pubFree, setPubFree] = usePersistentState('draft:event:pubFree', true);
   const [pubPrice, setPubPrice] = usePersistentState('draft:event:pubPrice', '');
   const [publishing, setPublishing] = useState(false);
@@ -126,8 +125,12 @@ export default function CreateEventPage() {
   ];
 
   const handlePublishEvent = async () => {
-    if (!hasImage || !pubTitle.trim() || !pubDate || !pubTime || !pubComuna || !pubCategory || !pubStartDate || !pubEndDate) {
+    if (!hasImage || !pubTitle.trim() || !pubDate || !pubTime || !pubCategory || !pubStartDate || !pubEndDate) {
       setPubError('Completa todos los campos obligatorios');
+      return;
+    }
+    if (!user?.comuna) {
+      setPubError('Completa la comuna de tu empresa en tu perfil para publicar');
       return;
     }
     if (!selectedPost && !manualImageUrl.trim()) {
@@ -151,7 +154,7 @@ export default function CreateEventPage() {
         categoryName: pubCategory,
         imageUrl: selectedPost ? selectedPost.media_url || undefined : manualImageUrl.trim() || undefined,
         instagramMediaId: selectedPost?.id || undefined,
-        city: pubComuna,
+        city: user.comuna,
         isOnline: false,
         address: pubFree ? undefined : formatEntryPrice(priceDigits(pubPrice)),
       });
@@ -167,7 +170,6 @@ export default function CreateEventPage() {
       setPubStartDate('');
       setPubEndDate('');
       setPubCategory('');
-      setPubComuna('');
       setPubFree(true);
       setPubPrice('');
       setPubSuccess(true);
@@ -365,11 +367,19 @@ export default function CreateEventPage() {
                         <input id="evt-hora" type="time" value={pubTime} onChange={(e) => setPubTime(e.target.value)} aria-required="true" className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
                       </div>
                       <div>
-                        <label htmlFor="evt-comuna" className="block text-xs mb-1" style={{ color: '#1D1D1F' }}>Lugar (comuna) *</label>
-                        <select id="evt-comuna" value={pubComuna} onChange={(e) => setPubComuna(e.target.value)} aria-required="true" className="w-full px-3 py-2.5 rounded-xl text-sm light-form">
-                          <option value="">Selecciona</option>
-                          {COMUNAS.map((c) => <option key={c} value={c}>{c}</option>)}
-                        </select>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <label htmlFor="evt-comuna" className="block text-xs" style={{ color: '#1D1D1F' }}>Lugar (comuna) *</label>
+                          <Popover label="Información de la comuna del evento">
+                            <p>Solo puedes publicar eventos de la comuna de tu empresa.</p>
+                          </Popover>
+                        </div>
+                        {user?.comuna ? (
+                          <input id="evt-comuna" type="text" value={user.comuna} readOnly className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
+                        ) : (
+                          <p id="evt-comuna" role="alert" className="text-xs py-2.5" style={{ color: '#DC2626' }}>
+                            Completa la comuna de tu empresa en tu <Link to="/profile" className="underline">perfil</Link> para publicar.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </fieldset>
@@ -492,7 +502,7 @@ export default function CreateEventPage() {
                 const endDate = event.publicationEndDate ? new Date(event.publicationEndDate) : null;
                 const isActive = !endDate || endDate >= now;
                 return (
-                  <PublishedEventCard key={`${event.id}-${event.title}-${event.description}`} event={event} isActive={isActive} onUpdate={loadUser} />
+                  <PublishedEventCard key={`${event.id}-${event.title}-${event.description}`} event={event} ownerComuna={user?.comuna} isActive={isActive} onUpdate={loadUser} />
                 );
               })}
             </div>
@@ -529,7 +539,7 @@ function parseDescParts(desc: string) {
   return { subtitle: desc.slice(0, idx).trim(), descText: desc.slice(idx + 1).trim() };
 }
 
-function PublishedEventCard({ event, isActive, onUpdate }: { event: Event; isActive: boolean; onUpdate: () => void }) {
+function PublishedEventCard({ event, ownerComuna, isActive, onUpdate }: { event: Event; ownerComuna?: string; isActive: boolean; onUpdate: () => void }) {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -539,7 +549,6 @@ function PublishedEventCard({ event, isActive, onUpdate }: { event: Event; isAct
   const [descText, setDescText] = useState(parts.descText);
   const [eventDate, setEventDate] = useState(format(new Date(event.date), 'yyyy-MM-dd'));
   const [eventTime, setEventTime] = useState(format(new Date(event.date), 'HH:mm'));
-  const [comuna, setComuna] = useState(event.city || '');
   const [tipo, setTipo] = useState(event.address ? 'compra' : 'gratis');
   const [price, setPrice] = useState(parseEntryPrice(event.address));
   const [priceError, setPriceError] = useState('');
@@ -572,7 +581,7 @@ function PublishedEventCard({ event, isActive, onUpdate }: { event: Event; isAct
         title: title.trim(),
         description,
         date: new Date(`${eventDate}T${eventTime}`).toISOString(),
-        city: comuna,
+        city: ownerComuna, // la comuna del evento es siempre la de la empresa
         categoryName: category || undefined,
         imageUrl: imageUrl || undefined,
         address: tipo === 'gratis' ? null : formatEntryPrice(price) || undefined,
@@ -721,11 +730,13 @@ function PublishedEventCard({ event, isActive, onUpdate }: { event: Event; isAct
                 </select>
               </div>
               <div className="flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#1D1D1F99' }}>Comuna</p>
-                <select value={comuna} onChange={(e) => setComuna(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-xs light-form">
-                  <option value="" disabled>Todas las comunas</option>
-                  {COMUNAS.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#1D1D1F99' }}>Comuna</p>
+                  <Popover label="Información de la comuna del evento">
+                    <p>Solo puedes publicar eventos de la comuna de tu empresa.</p>
+                  </Popover>
+                </div>
+                <input type="text" value={ownerComuna ?? event.city ?? ''} readOnly aria-label="Comuna" className="w-full px-3 py-2.5 rounded-xl text-xs light-form" />
               </div>
             </div>
 

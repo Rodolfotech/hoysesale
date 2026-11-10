@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
+import CookieBanner from '@/components/shared/CookieBanner';
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   return (
@@ -10,6 +11,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
         {children}
         <Footer />
       </div>
+      <CookieBanner />
     </>
   );
 }
