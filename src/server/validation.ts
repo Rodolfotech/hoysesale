@@ -5,6 +5,9 @@ import { BUSINESS_AMENITIES, BUSINESS_CATEGORIES } from '@/constants/business';
 import { AUDIENCES, ENTRY_TYPES, INTERACTION_TYPES } from './events/filters';
 import { hoursProblem } from '@/lib/hours';
 import { ABOUT_MAX_IMAGES } from '@/lib/media-limits';
+import { formatRut, isValidRut } from '@/lib/rut';
+
+const COMUNA_MESSAGE = 'Selecciona una comuna de la Región de La Araucanía';
 
 // Esquemas de entrada de la API (reemplazan los DTO de class-validator del backend NestJS).
 // Los objetos de zod eliminan los campos desconocidos: así no se puede escribir en columnas que el cliente no debe tocar.
@@ -16,6 +19,22 @@ const text = (max?: number) => {
   const base = z.string().trim();
   return max ? base.max(max, `Máximo ${max} caracteres`) : base;
 };
+
+// Datos que identifican a la empresa: obligatorios, por eso no aceptan null (no se pueden borrar).
+// Son opcionales en cada petición porque Contáctanos guarda solo una parte del perfil.
+// Texto obligatorio: rechaza null y vacío con un mensaje propio.
+const requiredText = (message: string, max: number) => z.string({ message }).trim().min(1, message).max(max, `Máximo ${max} caracteres`);
+
+const INSTAGRAM = z
+  .string({ message: 'El Instagram de la empresa es obligatorio' })
+  .regex(/^@[A-Za-z0-9_](?:[A-Za-z0-9_.]{0,28}[A-Za-z0-9_])?$/, 'El Instagram debe ser @usuario: hasta 30 caracteres (letras, números, _ o .)')
+  .refine((v) => !v.includes('..'), 'El Instagram no puede tener dos puntos seguidos');
+const COMPANY_ADDRESS = requiredText('La dirección de la empresa es obligatoria', 200)
+  .regex(/\d/, 'La dirección debe incluir calle y número');
+const COMPANY_PHONE = z.string({ message: 'El teléfono de la empresa es obligatorio' }).regex(PHONE_CL, PHONE_MESSAGE);
+const rutSchema = (who: string) =>
+  z.string({ message: `${who} es obligatorio` }).trim().refine(isValidRut, `${who} no es válido`).transform(formatRut);
+const COMPANY_RUT = rutSchema('El RUT de la empresa');
 
 // Las URL se escriben sin protocolo (www.mitienda.cl) o con http://: se guardan como https://.
 const toHttps = (value: string) => 'https://' + value.trim().replace(/^https?:\/\//i, '');
@@ -57,7 +76,7 @@ export const RegisterSchema = z.object({
   adminFirstName: text().min(1, 'El nombre del administrador es obligatorio'),
   adminLastName: text().min(1, 'El apellido del administrador es obligatorio'),
   adminPhone: z.string().regex(PHONE_CL, PHONE_MESSAGE),
-  comuna: z.enum(COMUNAS, { message: 'La comuna no pertenece a la Región de La Araucanía' }),
+  comuna: z.enum(COMUNAS, { message: COMUNA_MESSAGE }),
   email: z.email('El correo no es válido'),
   password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
 });
@@ -72,25 +91,22 @@ export const ResetPasswordSchema = z.object({
 export const CodeSchema = z.object({ code: z.string().catch('') });
 
 export const ProfileUpdateSchema = z.object({
-  name: text().min(1).optional(),
-  category: z.enum(BUSINESS_CATEGORIES).nullish(),
+  name: requiredText('El nombre de la empresa es obligatorio', 120).optional(),
+  category: z.enum(BUSINESS_CATEGORIES, { message: 'Selecciona la categoría de la empresa' }).optional(),
   avatar: z.string().nullish(),
-  companyInstagram: z
-    .string()
-    .regex(/^@[A-Za-z0-9_](?:[A-Za-z0-9_.]{0,28}[A-Za-z0-9_])?$/, 'El Instagram debe ser @usuario: hasta 30 caracteres (letras, números, _ o .)')
-    .refine((v) => !v.includes('..'), 'El Instagram no puede tener dos puntos seguidos')
-    .nullish(),
-  website: z.string().nullish(),
-  companyRut: z.string().nullish(),
-  companyGiro: z.string().nullish(),
-  companyPhone: z.string().nullish(),
-  companyAddress: z.string().nullish(),
-  city: z.string().nullish(),
-  comuna: z.enum(COMUNAS).nullish(),
-  adminFirstName: z.string().nullish(),
-  adminLastName: z.string().nullish(),
-  adminRut: z.string().nullish(),
-  adminPhone: z.string().nullish(),
+  companyInstagram: INSTAGRAM.optional(),
+  website: z.string().nullish(), // el único dato de la empresa que no es obligatorio
+  companyRut: COMPANY_RUT.optional(),
+  companyGiro: requiredText('El giro de la empresa es obligatorio', 100).optional(),
+  companyPhone: COMPANY_PHONE.optional(),
+  companyAddress: COMPANY_ADDRESS.optional(),
+  city: requiredText('La ciudad de la empresa es obligatoria', 60).optional(),
+  comuna: z.enum(COMUNAS, { message: COMUNA_MESSAGE }).optional(), // obligatoria: no se puede borrar
+  // Administrador: representante legal de la empresa. Todos sus datos son obligatorios.
+  adminFirstName: requiredText('El nombre del administrador es obligatorio', 60).optional(),
+  adminLastName: requiredText('El apellido del administrador es obligatorio', 60).optional(),
+  adminRut: rutSchema('El RUT del administrador').optional(),
+  adminPhone: z.string({ message: 'El teléfono del administrador es obligatorio' }).regex(PHONE_CL, PHONE_MESSAGE).optional(),
 });
 
 // --- Eventos ---
@@ -104,7 +120,7 @@ export const CreateEventSchema = z.object({
   categoryName: text().nullish(),
   locationName: z.string().nullish(),
   address: z.string().nullish(),
-  city: z.string().nullish(),
+  city: z.enum(COMUNAS, { message: COMUNA_MESSAGE }).optional(), // debe ser la comuna del negocio (events.ts)
   isOnline: z.boolean().optional(),
   imageUrl: z.string().nullish(),
   instagramMediaId: z.string().nullish(),
@@ -123,7 +139,7 @@ export const UpdateEventSchema = z.object({
   date: isoDate.optional(),
   locationName: z.string().nullish(),
   address: z.string().nullish(),
-  city: z.string().nullish(),
+  city: z.enum(COMUNAS, { message: COMUNA_MESSAGE }).optional(), // debe ser la comuna del negocio (events.ts)
   isOnline: z.boolean().optional(),
   imageUrl: anyHttpUrl.optional(),
   publicationStartDate: isoDate.nullish(),
@@ -163,17 +179,13 @@ export const LinkMediaSchema = z.object({
 
 export const BusinessPageSchema = z.object({
   name: text(20).min(1, 'El nombre del negocio es obligatorio').regex(/^[\p{L}\p{N} ]+$/u, 'El nombre solo puede tener letras, números y espacios').optional(),
-  comuna: z.enum(COMUNAS).nullish(),
-  companyAddress: text(200).nullish(),
-  companyPhone: z.string().regex(PHONE_CL, PHONE_MESSAGE).nullish(),
-  companyInstagram: z
-    .string()
-    .regex(/^@[A-Za-z0-9_](?:[A-Za-z0-9_.]{0,28}[A-Za-z0-9_])?$/, 'El Instagram debe ser @usuario: hasta 30 caracteres (letras, números, _ o .)')
-    .refine((v) => !v.includes('..'), 'El Instagram no puede tener dos puntos seguidos')
-    .nullish(),
+  comuna: z.enum(COMUNAS, { message: COMUNA_MESSAGE }).optional(),
+  companyAddress: COMPANY_ADDRESS.optional(),
+  companyPhone: COMPANY_PHONE.optional(),
+  companyInstagram: INSTAGRAM.optional(),
   website: httpsUrl.nullish(),
   slug: text(20).optional(),
-  category: z.enum(BUSINESS_CATEGORIES).nullish(),
+  category: z.enum(BUSINESS_CATEGORIES, { message: 'Selecciona la categoría de la empresa' }).optional(),
   logoUrl: httpsUrl.nullish(),
   logoShape: z.enum(LOGO_SHAPES).optional(),
   coverUrl: httpsUrl.nullish(),

@@ -4,7 +4,7 @@ import type { prisma as prismaClient } from '../db';
 export const RESERVED_SLUGS = new Set([
   'eventos', 'categorias', 'comunas', 'login', 'register', 'registro', 'profile', 'perfil',
   'create-event', 'forgot-password', 'reset-password', 'privacidad', 'terminosdelservicio',
-  'eliminacion-datos', 'panel-g9k2x', 'admin', 'api', 'auth', 'social', 'uploads', 'health', 'negocios',
+  'eliminacion-datos', 'politica-cookies', 'panel-g9k2x', 'admin', 'api', 'auth', 'social', 'uploads', 'health', 'negocios',
 ]);
 
 // URL del negocio: solo minúsculas y números, sin guiones ni guiones bajos. De 3 a 20 caracteres.

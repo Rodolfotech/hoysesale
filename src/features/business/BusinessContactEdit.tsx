@@ -66,7 +66,7 @@ function ContactDialog({ contact, onClose, onSaved }: { contact: BusinessContact
 
   // El Instagram y el sitio web son los mismos del perfil: se guardan aparte, con un aviso antes de cambiarlos.
   const saveInstagram = async () => {
-    await usersApi.updateProfile({ companyInstagram: instagramValueFrom(instagram) ?? null });
+    await usersApi.updateProfile({ companyInstagram: instagramValueFrom(instagram) });
     setSavedInstagram(instagram);
     onSaved();
   };
@@ -81,10 +81,10 @@ function ContactDialog({ contact, onClose, onSaved }: { contact: BusinessContact
     setSaving(true);
     setError('');
     try {
-      // Dirección y teléfono son datos del perfil; los textos son del micro-sitio. null borra el dato.
+      // Dirección y teléfono son datos obligatorios del perfil; los textos son del micro-sitio.
       await usersApi.updateProfile({
-        companyAddress: [street.trim(), number].filter(Boolean).join(' '),
-        companyPhone: phone ? `${PHONE_PREFIX}${phone}` : null,
+        companyAddress: `${street.trim()} ${number}`,
+        companyPhone: `${PHONE_PREFIX}${phone}`, // obligatorio: no se puede borrar
       });
       await businessApi.updateMe({ phoneLabel, addressLabel, instagramLabel, websiteLabel });
       onClose();
@@ -122,7 +122,7 @@ function ContactDialog({ contact, onClose, onSaved }: { contact: BusinessContact
         label="Instagram"
         onCancel={() => setInstagram(savedInstagram)}
         onSave={saveInstagram}
-        saveDisabled={instagram === savedInstagram}
+        saveDisabled={instagram === savedInstagram || !instagram}
         confirm={{
           title: 'Actualizar Instagram',
           message: 'Este Instagram es el mismo de tu perfil. Si lo guardas, también se actualizará en tu perfil.',
@@ -151,7 +151,7 @@ function ContactDialog({ contact, onClose, onSaved }: { contact: BusinessContact
       <div className="flex flex-wrap items-center justify-end gap-3">
         {error && <p role="alert" className="text-sm mr-auto" style={{ color: '#DC2626' }}>{error}</p>}
         <Button variant="ghost" onClick={onClose} disabled={saving}>Cancelar</Button>
-        <Button onClick={submit} disabled={saving || !street.trim() || phoneIncomplete}>{saving ? 'Guardando...' : 'Guardar'}</Button>
+        <Button onClick={submit} disabled={saving || !street.trim() || !number || !phone || phoneIncomplete}>{saving ? 'Guardando...' : 'Guardar'}</Button>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { Link } from '@/lib/router';
+import { CookieSettingsButton } from './CookieSettingsButton';
 
 const columns = [
   {
@@ -30,7 +31,6 @@ const columns = [
     title: 'Legal',
     links: [
       { label: 'Términos y condiciones', to: '/terminosdelservicio' },
-      { label: 'Privacidad', to: '/privacidad' },
       { label: 'Eliminar datos', to: '/eliminacion-datos' },
     ],
   },
@@ -74,13 +74,24 @@ export default function Footer() {
         <hr style={{ borderColor: '#E4EBFA' }} />
 
         {/* Bottom */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6">
-          <Link to="/" className="flex items-center">
-            <img src="/Logohoysesale.svg" alt="HoySeSale" className="h-9 w-auto" />
-          </Link>
-          <p className="text-sm" style={{ color: '#1D1D1F99' }}>
-            © {new Date().getFullYear()} hoysesale.cl — La Araucanía, Chile
-          </p>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-6">
+          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6">
+            <Link to="/" className="flex items-center">
+              <img src="/Logohoysesale.svg" alt="HoySeSale" className="h-9 w-auto" />
+            </Link>
+            <p className="text-sm" style={{ color: '#1D1D1F99' }}>
+              © {new Date().getFullYear()} hoysesale.cl — La Araucanía, Chile
+            </p>
+          </div>
+
+          {/* Políticas y consentimiento de cookies: siempre a mano (Ley 21.719) */}
+          <nav aria-label="Privacidad y cookies">
+            <ul className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm">
+              <li><Link to="/privacidad" className="transition-colors hover:!text-[#2563EB]" style={{ color: '#1D1D1F99' }}>Política de privacidad</Link></li>
+              <li aria-hidden="true" style={{ color: '#1D1D1F33' }}>·</li>
+              <li><CookieSettingsButton className="transition-colors hover:!text-[#2563EB]" style={{ color: '#1D1D1F99' }} /></li>
+            </ul>
+          </nav>
         </div>
 
       </div>

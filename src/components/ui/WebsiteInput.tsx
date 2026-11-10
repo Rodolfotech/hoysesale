@@ -1,6 +1,7 @@
 'use client';
 
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
+import { Popover } from './Popover';
 
 // Sitio web: prefijo fijo https:// y el usuario escribe solo el dominio o la ruta.
 export const WEBSITE_PREFIX = 'https://';
@@ -34,18 +35,22 @@ interface WebsiteInputProps {
   onChange: (rest: string) => void;
   error?: string;
   id?: string;
+  info?: ReactNode; // texto del botón de información junto al nombre
 }
 
-export function WebsiteInput({ label, value, onChange, error, id }: WebsiteInputProps) {
+export function WebsiteInput({ label, value, onChange, error, id, info }: WebsiteInputProps) {
   const autoId = useId();
   const inputId = id ?? autoId;
   const errorId = `${inputId}-error`;
 
   return (
     <div>
-      <label htmlFor={inputId} className="block text-sm font-medium mb-1.5" style={{ color: '#1D1D1F', fontSize: '14px' }}>
-        {label}
-      </label>
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <label htmlFor={inputId} className="block text-sm font-medium" style={{ color: '#1D1D1F', fontSize: '14px' }}>
+          {label}
+        </label>
+        {info && <Popover label={`Información de ${label.toLowerCase()}`}>{info}</Popover>}
+      </div>
       <div
         className="flex items-stretch rounded-xl overflow-hidden light-form"
         style={{ border: error ? '1px solid #DC2626' : undefined }}

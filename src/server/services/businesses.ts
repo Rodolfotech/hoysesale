@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { Prisma } from '@/generated/prisma/client';
 import { prisma } from '../db';
 import { badRequest, conflict, notFound } from '../http';
-import { BUSINESS_SLUG_MAX, slugify, slugProblem } from '../businesses/slug';
+import { BUSINESS_SLUG_MAX, slugProblem } from '../businesses/slug';
 import { ALLOWED_IMAGE_TYPES, getMediaStorage } from '../storage';
 import { activeEvents } from './events';
 import { ABOUT_MAX_IMAGES, COVER_IMAGE_TYPES, COVER_MAX_BYTES, COVER_SIZE, ITEM_IMAGE_MAX_BYTES, LOGO_IMAGE_TYPES, LOGO_MAX_BYTES, MAX_IMAGE_BYTES } from '@/lib/media-limits';
@@ -114,21 +114,27 @@ function userData(fields: Omit<BusinessPage, "slug">): Prisma.UserUpdateInput {
 
 // Crea la página del negocio con la URL que elige el cliente (una sola vez por cuenta).
 export async function createBusinessPage(userId: string, dto: BusinessPage) {
-  const current = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { slug: true, name: true, companyAddress: true },
-  });
+  const current = await prisma.user.findUnique({ where: { id: userId }, select: { slug: true } });
   if (!current) throw badRequest('Usuario no encontrado');
   if (current.slug) throw conflict('Ya tienes una página creada');
 
-  // Nombre y dirección vienen del perfil por defecto.
+  // La URL es el único dato obligatorio para crear la página; lo demás se completa después.
   const { slug: rawSlug, ...fields } = dto;
-  if (!current.name) throw badRequest('Completa el nombre de la empresa en tu perfil');
-  if (!current.companyAddress) throw badRequest('Completa la dirección de la empresa en tu perfil');
-  const slug = (rawSlug ?? slugify(current.name)).trim().toLowerCase();
+  const slug = rawSlug?.trim().toLowerCase();
+  if (!slug) throw badRequest('Ingresa la dirección de tu página');
   await assertSlugAvailable(slug, userId);
 
-  return prisma.user.update({ where: { id: userId }, data: { ...userData(fields), slug }, select: PUBLIC_BUSINESS_SELECT });
+  return saveWithSlug(userId, { ...userData(fields), slug });
+}
+
+// La URL es única (índice users_slug_key). Si otra cuenta la tomó entre la revisión y el guardado, se responde 409.
+async function saveWithSlug(userId: string, data: Prisma.UserUpdateInput) {
+  try {
+    return await prisma.user.update({ where: { id: userId }, data, select: PUBLIC_BUSINESS_SELECT });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') throw conflict('Esa URL ya está en uso');
+    throw e;
+  }
 }
 
 // Edición del propio micro-sitio. El slug se puede cambiar, con las mismas validaciones.
@@ -144,7 +150,7 @@ export async function updateOwnBusiness(userId: string, dto: BusinessPage) {
       data.slug = slug;
     }
   }
-  return prisma.user.update({ where: { id: userId }, data, select: PUBLIC_BUSINESS_SELECT });
+  return saveWithSlug(userId, data);
 }
 
 async function assertSlugAvailable(slug: string, ownerId: string) {

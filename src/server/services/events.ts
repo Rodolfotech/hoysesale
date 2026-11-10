@@ -1,6 +1,6 @@
 import { prisma } from '../db';
 import { Prisma } from '@/generated/prisma/client';
-import { forbidden, notFound, conflict } from '../http';
+import { badRequest, forbidden, notFound, conflict } from '../http';
 import { PUBLIC_USER_SELECT } from '../users/public-user';
 import { mapEmbedUrl } from '@/lib/map-embed';
 import { eventSlug } from '../events/slug';
@@ -130,7 +130,20 @@ async function resolveCategory(categoryName?: string | null): Promise<string | u
   return created.id;
 }
 
+// Una empresa solo publica eventos de la comuna con que se registró.
+async function ownerComuna(ownerId: string): Promise<string> {
+  const owner = await prisma.user.findUnique({ where: { id: ownerId }, select: { comuna: true } });
+  if (!owner?.comuna) throw badRequest('Completa la comuna de tu empresa en tu perfil para publicar eventos');
+  return owner.comuna;
+}
+
+function assertSameComuna(city: string | undefined, comuna: string) {
+  if (city !== undefined && city !== comuna) throw badRequest(`Solo puedes publicar eventos en tu comuna (${comuna})`);
+}
+
 export async function createEvent(ownerId: string, body: z.output<typeof CreateEventSchema>) {
+  const comuna = await ownerComuna(ownerId);
+  assertSameComuna(body.city, comuna);
   const categoryId = body.categoryId || (await resolveCategory(body.categoryName));
   try {
     return await prisma.event.create({
@@ -143,7 +156,7 @@ export async function createEvent(ownerId: string, body: z.output<typeof CreateE
         categoryId,
         locationName: body.locationName,
         address: body.address,
-        city: body.city,
+        city: comuna,
         isOnline: body.isOnline ?? false,
         imageUrl: body.imageUrl,
         instagramMediaId: body.instagramMediaId,
@@ -163,7 +176,9 @@ export async function createEvent(ownerId: string, body: z.output<typeof CreateE
 }
 
 export async function updateEvent(id: string, body: z.output<typeof UpdateEventSchema>, requester: Requester) {
-  await assertCanManage(id, requester);
+  const ownerId = await assertCanManage(id, requester);
+  // Vale también cuando edita un administrador: manda la comuna del dueño del evento.
+  if (body.city !== undefined) assertSameComuna(body.city, await ownerComuna(ownerId));
   const { categoryName, date, publicationStartDate, publicationEndDate, amenities, ...rest } = body;
   const data: Record<string, unknown> = { ...rest };
   // Un campo Json no acepta null: para borrarlo hay que usar Prisma.DbNull.
@@ -182,12 +197,13 @@ export async function deleteEvent(id: string, requester: Requester) {
 }
 
 // Solo el dueño del evento o un ADMIN puede modificarlo o borrarlo.
-async function assertCanManage(id: string, requester: Requester) {
+async function assertCanManage(id: string, requester: Requester): Promise<string> {
   const event = await prisma.event.findUnique({ where: { id }, select: { ownerId: true } });
   if (!event) throw notFound('Evento no encontrado');
   if (event.ownerId !== requester.id && requester.role !== 'ADMIN') {
     throw forbidden('No puedes modificar este evento');
   }
+  return event.ownerId;
 }
 
 function isUniqueViolation(e: unknown): boolean {
