@@ -12,6 +12,7 @@ import type { BusinessReview } from '@/lib/business';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { useIsOwner } from './useIsOwner';
 
 interface ReviewsSectionProps {
   slug: string;
@@ -24,14 +25,14 @@ interface ReviewsSectionProps {
 // Valoración, reseñas y formulario para dejar una reseña (una por usuario).
 export function ReviewsSection({ slug, reviews, rating, reviewCount, ratingCounts = [0, 0, 0, 0, 0] }: ReviewsSectionProps) {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [stars, setStars] = useState(5);
   const [comment, setComment] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
   const [writing, setWriting] = useState(false); // formulario abierto en la vista del visitante
-  const isOwner = user?.slug === slug;
+  const isOwner = useIsOwner(slug);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

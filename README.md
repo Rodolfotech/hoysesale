@@ -135,7 +135,7 @@ Cada negocio tiene su página en `/<slug>`. La pestaña del navegador muestra el
 - **Cabecera:** portada centrada y completa (proporción 3:1), logo con borde blanco sobre su borde, el nombre (`h1`) debajo del logo y las estadísticas.
 - **Ancho:** el mismo contenedor de Eventos (`max-w-7xl mx-auto px-4`).
 - **Orden de las pestañas** (`TAB_ORDER`, igual para visitante y dueño): Nosotros, la principal de la categoría (Servicios, Productos o Eventos), Horario, Contáctanos y Reseñas.
-- **Vista del visitante** (`BusinessSections`): todas las secciones en una sola página. Arriba, la sección principal de la categoría (Servicios, Productos o Eventos); debajo, Nosotros (dos tercios: fotos, descripción y Lo que encontrarás en una tarjeta) y Reseñas (un tercio); a la derecha, Horario y Contacto y ubicación (con Cómo llegar). La barra de pestañas lleva a cada sección y marca la que se está viendo. En celular las columnas se apilan.
+- **Vista del visitante** (`BusinessSections`): todas las secciones en una sola página. En escritorio, a la izquierda Nosotros (fotos, descripción con Ver más y Lo que encontrarás) y debajo la sección principal de la categoría (Servicios, Productos o Eventos); a la derecha Horario y Contacto y ubicación (con Cómo llegar), y Reseñas a la altura de la sección principal. En celular se apilan en el orden de las pestañas. La barra de pestañas lleva a cada sección y marca la que se está viendo.
 - **Vista del dueño (editor):** las pestañas de siempre (`SectionTabs`), con sus controles. Abre en Eventos o, si está oculta, en la primera visible, y cada navegador recuerda la pestaña por negocio mientras dura la sesión. "Mostrar en todas las pestañas" solo aplica a esta vista: para el visitante el contacto siempre está en la columna derecha.
 
 | Pestaña | Contenido |
@@ -151,6 +151,8 @@ Cada negocio tiene su página en `/<slug>`. La pestaña del navegador muestra el
 ### Controles del dueño
 
 Solo los ve el dueño (`useIsOwner`). El servidor valida cada cambio por separado.
+
+- **Ver como visitante** (`OwnerPreview`): botón junto a Encuéntranos. Muestra la página como la ve un visitante (diseño de una página, sin controles y sin las pestañas ocultas) y un aviso fijo con Volver a editar. Solo cambia lo que ve el navegador; mientras dura, `useIsOwner` devuelve `false`. Para los controles nuevos usa `useIsOwner`, no compares la sesión a mano, o seguirán visibles en la vista previa.
 
 - **Logo:** reemplazar la imagen y elegir marco redondo o cuadrado. El marco en uso se ve opaco.
 - **Portada:** reemplazar la imagen. Logo y portada aceptan arrastrar archivos.
