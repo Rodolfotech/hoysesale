@@ -1,6 +1,7 @@
 'use client';
 
-import { useId } from 'react';
+import { useId, type CSSProperties, type ReactNode } from 'react';
+import { Popover } from './Popover';
 
 // Usuario de Instagram: prefijo fijo @ y hasta 30 caracteres (letras, números, _ y .).
 // No se permiten guiones, @, emojis ni dos puntos seguidos.
@@ -39,18 +40,24 @@ interface InstagramInputProps {
   onChange: (handle: string) => void;
   error?: string;
   id?: string;
+  info?: ReactNode; // texto del botón de información junto al nombre
+  required?: boolean;
+  labelStyle?: CSSProperties; // reemplaza el estilo de la etiqueta (por ejemplo, el del perfil)
 }
 
-export function InstagramInput({ label, value, onChange, error, id }: InstagramInputProps) {
+export function InstagramInput({ label, value, onChange, error, id, info, required, labelStyle }: InstagramInputProps) {
   const autoId = useId();
   const inputId = id ?? autoId;
   const errorId = `${inputId}-error`;
 
   return (
     <div>
-      <label htmlFor={inputId} className="block text-sm font-medium mb-1.5" style={{ color: '#1D1D1F', fontSize: '14px' }}>
-        {label}
-      </label>
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <label htmlFor={inputId} className={labelStyle ? 'block' : 'block text-sm font-medium'} style={labelStyle ?? { color: '#1D1D1F', fontSize: '14px' }}>
+          {label}{required && <span style={{ color: '#DC2626' }}> *</span>}
+        </label>
+        {info && <Popover label={`Información de ${label.toLowerCase()}`}>{info}</Popover>}
+      </div>
       <div
         className="flex items-stretch rounded-xl overflow-hidden light-form"
         style={{ border: error ? '1px solid #DC2626' : undefined }}

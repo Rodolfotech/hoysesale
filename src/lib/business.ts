@@ -1,7 +1,12 @@
 // Tipos del micro-sitio de un negocio (forma pública que devuelve getPublicBusiness) y URL del sitio.
 // Etiquetas de un servicio: mismos límites en formulario y servidor.
-export const SERVICE_TAGS_MAX = 3;
+export const SERVICE_TAGS_MAX = 8;
 export const SERVICE_TAG_MAX_LENGTH = 20;
+// Servicio: nombre y descripción cortos, para que la tarjeta se lea completa.
+export const SERVICE_TITLE_MAX = 60;
+export const SERVICE_DESCRIPTION_MAX = 200;
+// Sugerencias de etiquetas en el formulario de servicio.
+export const SERVICE_TAG_SUGGESTIONS = ['Premium', 'Express', 'Ciudad', 'Aeropuerto', 'Nocturno', 'Ejecutivo'];
 
 // Descripción del negocio: mismo límite en formulario y servidor.
 export const BUSINESS_DESCRIPTION_MAX = 2000;
@@ -83,7 +88,8 @@ export interface BusinessReview {
 export interface Business {
   aboutImages: string[];
   createdAt?: string;
-  stats: { rating: number | null; reviewCount: number; years: number };
+  // ratingCounts: cuántas reseñas tienen 1 a 5 estrellas (índice 0 = 1 estrella).
+  stats: { rating: number | null; reviewCount: number; ratingCounts: number[]; years: number };
   products: BusinessProduct[];
   services: BusinessService[];
   highlights: BusinessHighlight[];
@@ -103,7 +109,8 @@ export interface Business {
   addressLabel: AddressLabel | null;
   instagramLabel: InstagramLabel | null;
   websiteLabel: WebsiteLabel | null;
-  hiddenTabs: HideableTab[];
+  hiddenTabs: HideableTab[]; // las que el dueño ocultó a los visitantes
+  unavailableTabs: HideableTab[]; // las que su categoría no tiene: no las ve nadie (business-rules.ts)
   contactInAllTabs: boolean;
   comuna: string | null;
   city: string | null;
@@ -114,10 +121,10 @@ export interface Business {
   events: BusinessEvent[];
 }
 
-// Quita el contenido de las pestañas ocultas antes de enviar la página a un visitante.
-// El contacto se conserva si el dueño pidió mostrarlo debajo de cada pestaña.
-export function redactHiddenTabs(business: Business): Business {
-  const hidden = new Set<string>(business.hiddenTabs);
+// Quita el contenido de las pestañas que no se muestran: las que su categoría no tiene y, para un visitante,
+// también las que el dueño ocultó. El contacto se conserva si el dueño pidió mostrarlo debajo de cada pestaña.
+export function redactHiddenTabs(business: Business, ownerView = false): Business {
+  const hidden = new Set<string>([...business.unavailableTabs, ...(ownerView ? [] : business.hiddenTabs)]);
   const contact = hidden.has('contactanos') && !business.contactInAllTabs
     ? { companyAddress: null, companyPhone: null, companyInstagram: null, website: null }
     : {};

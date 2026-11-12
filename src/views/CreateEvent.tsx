@@ -7,8 +7,8 @@ import { useAuth } from '../context/AuthContext';
 import { eventsApi, socialApi, attendeesApi, mediaApi } from '../api';
 import { clearCache } from '../api/eventsCache';
 import { formatEntryPrice, parseEntryPrice, priceDigits } from '@/lib/event-price';
+import { EVENTS_NOT_ALLOWED_MESSAGE, canPublishEvents } from '@/lib/business-rules';
 import { ImagePicker } from '../features/media/ImagePicker';
-import { CreateBusinessPage } from '../features/business/CreateBusinessPage';
 import type { Event, SocialPost } from '../types';
 import {
   Camera,
@@ -32,7 +32,7 @@ import { es } from 'date-fns/locale';
 type Tab = 'myevents' | 'registered' | 'instagram' | 'upload';
 
 export default function CreateEventPage() {
-  const { isAuthenticated, user, setUser } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = usePersistentState<Tab>('ui:event:tab', 'instagram');
 
@@ -131,6 +131,10 @@ export default function CreateEventPage() {
     }
     if (!user?.comuna) {
       setPubError('Completa la comuna de tu empresa en tu perfil para publicar');
+      return;
+    }
+    if (!canPublishEvents(user.category, user.companyGiro)) {
+      setPubError(EVENTS_NOT_ALLOWED_MESSAGE);
       return;
     }
     if (!selectedPost && !manualImageUrl.trim()) {
@@ -234,11 +238,6 @@ export default function CreateEventPage() {
               </button>
             ))}
           </div>
-          <div className="flex justify-end">
-            {user && (
-              <CreateBusinessPage user={user} onUpdated={(patch) => setUser({ ...user, ...patch })} />
-            )}
-          </div>
       </div>
 
       {/* Tab: Programar evento */}
@@ -326,6 +325,11 @@ export default function CreateEventPage() {
                 <div>
                   <h2 id="paso-2-titulo" className="text-lg font-semibold" style={{ color: '#1D1D1F' }}>Paso 2 · Publicar evento</h2>
                   <p className="text-sm" style={{ color: '#1D1D1F99' }}>Completa los detalles del evento. Cuando todo esté listo, podrás publicarlo.</p>
+                  {user && !canPublishEvents(user.category, user.companyGiro) && (
+                    <p role="alert" className="text-xs mt-2" style={{ color: '#DC2626' }}>
+                      {EVENTS_NOT_ALLOWED_MESSAGE} Revisa la categoría y el giro en tu <Link to="/profile" className="underline">perfil</Link>.
+                    </p>
+                  )}
                 </div>
                 <ol className="flex items-center gap-2 text-xs" aria-label="Progreso">
                   <li style={{ color: '#1D1D1F99' }}>1. Imagen</li>

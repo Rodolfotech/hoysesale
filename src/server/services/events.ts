@@ -1,4 +1,5 @@
 import { prisma } from '../db';
+import { EVENTS_NOT_ALLOWED_MESSAGE, canPublishEvents } from '@/lib/business-rules';
 import { Prisma } from '@/generated/prisma/client';
 import { badRequest, forbidden, notFound, conflict } from '../http';
 import { PUBLIC_USER_SELECT } from '../users/public-user';
@@ -137,6 +138,12 @@ async function ownerComuna(ownerId: string): Promise<string> {
   return owner.comuna;
 }
 
+// Solo publican eventos las categorías de los grupos 1 a 5 sin giro de comercio funcional (business-rules.ts).
+async function assertCanPublishEvents(ownerId: string) {
+  const owner = await prisma.user.findUnique({ where: { id: ownerId }, select: { category: true, companyGiro: true } });
+  if (!canPublishEvents(owner?.category, owner?.companyGiro)) throw forbidden(EVENTS_NOT_ALLOWED_MESSAGE);
+}
+
 function assertSameComuna(city: string | undefined, comuna: string) {
   if (city !== undefined && city !== comuna) throw badRequest(`Solo puedes publicar eventos en tu comuna (${comuna})`);
 }
@@ -144,6 +151,7 @@ function assertSameComuna(city: string | undefined, comuna: string) {
 export async function createEvent(ownerId: string, body: z.output<typeof CreateEventSchema>) {
   const comuna = await ownerComuna(ownerId);
   assertSameComuna(body.city, comuna);
+  await assertCanPublishEvents(ownerId);
   const categoryId = body.categoryId || (await resolveCategory(body.categoryName));
   try {
     return await prisma.event.create({

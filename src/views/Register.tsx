@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from '@/lib/router';
 import { UserPlus, Mail, User } from 'lucide-react';
 import { authApi } from '../api';
+import { googleResultFrom } from '../features/auth/googleMessage';
 import { GlassCard } from '../components/ui/GlassCard';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { FormInput } from '../components/ui/FormInput';
@@ -31,25 +32,26 @@ export default function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { register } = useAuth();
+  const { register, setUser } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     const handleMessage = async (e: MessageEvent) => {
-      if (e.data?.type === 'google-code') {
-        if (e.data.error) {
+      const result = googleResultFrom(e);
+      if (result) {
+        if ('error' in result) {
           setGoogleLoading(false);
           setError('Error al registrarse con Google');
           return;
         }
-        if (e.data.code) {
-          try {
-            await authApi.googleLogin(e.data.code);
-            navigate('/profile');
-          } catch {
-            setGoogleLoading(false);
-            setError('Error al registrarse con Google');
-          }
+        try {
+          // Igual que en el login: sin cargar el usuario, el perfil cree que no hay sesión y vuelve al login.
+          const { data } = await authApi.googleLogin(result.code);
+          setUser(data.user);
+          navigate('/profile');
+        } catch {
+          setGoogleLoading(false);
+          setError('Error al registrarse con Google');
         }
       }
     };

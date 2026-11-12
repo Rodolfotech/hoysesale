@@ -1,12 +1,13 @@
 # Plan de seguridad y escalabilidad — HoySeSale.cl
 
-Estado de la seguridad y la escalabilidad del proyecto. Cada tarea pendiente tiene un criterio de éxito verificable. Actualizado el 30-10-2026.
+Estado de la seguridad y la escalabilidad del proyecto. Cada tarea pendiente tiene un criterio de éxito verificable. Actualizado el 11-11-2026.
 
 ## Estado actual
 
-- **Producción:** esquema de base de datos al día. Falta desplegar el código de esta entrega.
-- **Código:** cabeceras, límite compartido, pruebas de permisos y filtrado de pestañas ocultas terminados y probados en local.
-- **Próximo paso:** rotar los secretos y desplegar con revisión del preview.
+- **Producción:** esquema de base de datos al día. El banner de cookies y las políticas nuevas ya se ven en `www.hoysesale.cl`; falta confirmar en Vercel el commit del deployment.
+- **Sin commit en `main`:** revisión de origen del código de Google, corrección del registro con Google y las validaciones nuevas del perfil (RUT de empresa, categoría, giro y teléfono).
+- **Próximo paso:** rotar los secretos y subir lo pendiente con una rama y Pull Request.
+- **Protección de datos (Ley 21.719):** ver `plan.md`.
 - **Lecciones aplicadas:** ver "Errores que ya cometimos" en `README.md`.
 
 ## Hecho
@@ -25,11 +26,17 @@ Estado de la seguridad y la escalabilidad del proyecto. Cada tarea pendiente tie
 | Dependencias | `pnpm audit --prod` sin vulnerabilidades conocidas |
 | Lint | 0 errores. 11 casos de `set-state-in-effect` quedaron justificados con un comentario, sin rediseñar esos efectos |
 | Validaciones de entrada | Teléfono, Instagram, URL, horarios, imágenes y textos de contacto en el servidor |
+| Datos obligatorios en el servidor | RUT con dígito verificador (el de la empresa desde 50.000.000), categoría y giro solo de sus listas, teléfono `+569` y 8 dígitos, datos de empresa y administrador que no se pueden vaciar, comuna de La Araucanía, eventos solo en la comuna de la empresa |
+| Imagen de eventos | Solo URL `http` o `https`: rechaza `javascript:` |
+| CSP para el mapa | `frame-src` limitado a `https://www.google.com`. Probado en un build de producción local |
+| Código de Google entre ventanas | Solo se acepta desde el mismo origen y una vez; la ventana de Google ya no lo envía con `'*'` |
+| URL única del negocio | Si dos cuentas guardan la misma URL a la vez, la segunda recibe 409 en vez de un error 500 |
+| Supresión al desconectar Instagram | También se borran el nombre de usuario y la foto, igual que la eliminación pedida desde Meta |
 
 ## Fase 0: publicar
 
 1. **Rotar secretos (lo hace el dueño del proyecto).**
-   Cambiar `JWT_SECRET`, la contraseña de la base y la clave de servicio de Supabase en sus paneles, y actualizarlos en Vercel. Al cambiar `JWT_SECRET` se cierran todas las sesiones. La lista de secretos expuestos estaba en `SPEC.md`, que no está en este repositorio.
+   Cambiar `JWT_SECRET`, la contraseña de la base y la clave de servicio de Supabase en sus paneles, y actualizarlos en Vercel. Al cambiar `JWT_SECRET` se cierran todas las sesiones. La lista de secretos expuestos estaba en `SPEC.md`, que no está en este repositorio. La clave de Context7 de `opencode.json` también quedó escrita en una conversación: generar una nueva en su panel.
    *Criterio:* los valores antiguos dejan de funcionar y el sitio sigue operativo.
 
 2. **Desplegar desde una rama con Pull Request.**

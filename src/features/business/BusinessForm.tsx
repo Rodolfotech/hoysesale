@@ -12,7 +12,6 @@ import { FormInput } from '../../components/ui/FormInput';
 import { apiErrorMessage } from '@/lib/api-error';
 import { businessApi } from '../../api';
 import { COMUNAS } from '../../constants/comunas';
-import { BUSINESS_CATEGORIES } from '../../constants/business';
 
 import { BUSINESS_DAYS } from '../../constants/business';
 export { BUSINESS_DAYS };

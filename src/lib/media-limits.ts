@@ -25,8 +25,13 @@ export const WEBP_TYPES = ['image/webp'];
 export const COVER_MAX_BYTES = 90 * 1024;
 export const COVER_SIZE = { width: 1200, height: 400 };
 
-// Imágenes de productos y servicios: solo WEBP.
+// Imágenes de productos y servicios: hasta 2 MB. Productos solo en WEBP; servicios en WEBP (recomendado), JPG o PNG.
 export const ITEM_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+export const SERVICE_IMAGE_TYPES: Record<string, string> = {
+  'image/webp': 'webp',
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+};
 
 // Fotos del negocio para "Nosotros".
 export const ABOUT_MAX_IMAGES = 3;

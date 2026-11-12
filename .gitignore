@@ -52,3 +52,6 @@ next-env.d.ts
 # Imágenes locales de desarrollo (STORAGE_DRIVER=local)
 /uploads
 !.env.example
+
+# Configuración local de OpenCode: contiene la clave de Context7
+opencode.json
