@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { BusinessForm, type BusinessFormInitial, type BusinessFormPayload } from './BusinessForm';
 import { saveBusinessEdits } from './saveBusiness';
 import { useIsOwner } from './useIsOwner';
+import { OwnerPreviewToggle } from './OwnerPreview';
 
 interface BusinessOwnerBarProps {
   slug: string;
@@ -60,6 +61,7 @@ export function BusinessOwnerBar({ slug, pageUrl, initial }: BusinessOwnerBarPro
 
   return (
     <div className="flex flex-wrap gap-2 justify-end">
+      <OwnerPreviewToggle slug={slug} />
       {isOwner && (
         <>
           <Button onClick={() => setOpen(true)}>Encuéntranos</Button>

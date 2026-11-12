@@ -39,7 +39,7 @@ Lee `README.md` antes de cambiar nada. Este archivo resume lo que un agente debe
 - **Después de cambios:** corre `pnpm exec tsc --noEmit`, `pnpm test` y `pnpm build`. Tras un build o un cambio de esquema reinicia `pnpm dev`; si la página se recarga sola, borra `.next` antes. Si el usuario tiene `pnpm dev` corriendo, haz el build en una copia para no tocar su `.next`, y prueba reglas del servidor en un build aparte (`next start -p 5199`): `pnpm dev` a veces no recarga el código del servidor.
 - **Rutas de API:** toda ruta nueva exige sesión. Si debe ser pública, decláralo en `src/app/api/authorization.test.ts`.
 - **Datos privados:** se filtran en el servidor. No basta con ocultarlos en el cliente.
-- **Dueño:** usa `useIsOwner` para mostrar controles; el servidor debe validar igual cada cambio.
+- **Dueño:** usa `useIsOwner` para mostrar controles (así se ocultan en Ver como visitante); el servidor debe validar igual cada cambio.
 
 ## Qué no hacer
 

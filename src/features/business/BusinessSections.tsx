@@ -9,9 +9,10 @@ export interface BusinessSection {
 }
 
 // Dónde va cada sección. La principal es la oferta de la categoría (servicios, productos o eventos).
+// Escritorio: arriba Nosotros | Horario y Contáctanos; abajo la principal | Reseñas.
 const MAIN = ['servicios', 'productos', 'eventos'];
-const PAIR = ['nosotros', 'resenas']; // debajo de la principal, en dos columnas
-const ASIDE = ['horario', 'contactanos']; // columna derecha
+const ASIDE = ['horario', 'contactanos'];
+
 // Orden de las pestañas, para el visitante y el dueño: Nosotros, la principal, Horario, Contáctanos y Reseñas.
 export const TAB_ORDER = ['nosotros', ...MAIN, 'horario', 'contactanos', 'resenas'];
 
@@ -27,9 +28,11 @@ export function BusinessSections({ sections, hiddenIds }: BusinessSectionsProps)
   const visible = sections.filter((section) => !hiddenIds.includes(section.id));
   const nav = TAB_ORDER.map((id) => visible.find((section) => section.id === id)).filter((s): s is BusinessSection => !!s);
   const pick = (ids: string[]) => ids.map((id) => visible.find((section) => section.id === id)).filter((s): s is BusinessSection => !!s);
+  const about = pick(['nosotros']);
   const main = pick(MAIN);
-  const pair = pick(PAIR);
   const aside = pick(ASIDE);
+  const reviews = pick(['resenas']);
+  const twoColumns = aside.length > 0 || reviews.length > 0;
   const [active, setActive] = useState(nav[0]?.id);
   const navKey = nav.map((section) => section.id).join(',');
   const locked = useRef(false); // tras un clic, la sección elegida queda marcada mientras se desplaza
@@ -55,8 +58,8 @@ export function BusinessSections({ sections, hiddenIds }: BusinessSectionsProps)
     document.getElementById(anchorId(id))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const block = (section: BusinessSection) => (
-    <div key={section.id} id={anchorId(section.id)} className="scroll-mt-36 min-w-0">
+  const block = (section: BusinessSection, className = '') => (
+    <div key={section.id} id={anchorId(section.id)} className={`scroll-mt-36 min-w-0 ${className}`}>
       {section.content}
     </div>
   );
@@ -83,12 +86,12 @@ export function BusinessSections({ sections, hiddenIds }: BusinessSectionsProps)
         </ul>
       </nav>
 
-      <div className={`max-w-7xl mx-auto px-4 pt-10 grid gap-10 ${aside.length ? 'lg:grid-cols-[minmax(0,1fr)_360px]' : ''}`}>
-        <div className="space-y-12 min-w-0">
-          {main.map(block)}
-          {pair.length > 0 && <div className={`grid gap-8 ${pair.length > 1 ? 'md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : ''}`}>{pair.map(block)}</div>}
-        </div>
-        {aside.length > 0 && <aside className="space-y-6 min-w-0">{aside.map(block)}</aside>}
+      {/* En celular se apilan en el orden de las pestañas; en escritorio cada bloque va a su celda. */}
+      <div className={`max-w-7xl mx-auto px-4 pt-10 grid gap-x-10 gap-y-12 items-start ${twoColumns ? 'lg:grid-cols-[minmax(0,1fr)_360px]' : ''}`}>
+        {about.map((section) => block(section, 'lg:col-start-1 lg:row-start-1'))}
+        {main.length > 0 && <div className="space-y-12 min-w-0 lg:col-start-1 lg:row-start-2">{main.map((section) => block(section))}</div>}
+        {aside.length > 0 && <aside className="space-y-6 min-w-0 lg:col-start-2 lg:row-start-1">{aside.map((section) => block(section))}</aside>}
+        {reviews.map((section) => block(section, 'lg:col-start-2 lg:row-start-2'))}
       </div>
     </div>
   );

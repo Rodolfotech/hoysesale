@@ -13,8 +13,10 @@ import { ContactVisibility } from '@/features/business/ContactVisibility';
 import { TabVisibilitySwitch } from '@/features/business/TabVisibilitySwitch';
 import { OfferItemAdd } from '@/features/business/OfferItemAdd';
 import { BusinessOwnerBar } from '@/features/business/BusinessOwnerBar';
+import { OwnerPreviewProvider } from '@/features/business/OwnerPreview';
 import { ImageCarousel } from '@/components/ui/ImageCarousel';
 import { AmenityList } from '@/features/business/AmenityList';
+import { AboutText } from '@/features/business/AboutText';
 import { ProductsSection } from '@/features/business/ProductsSection';
 import { ServicesSection } from '@/features/business/ServicesSection';
 import { EventsCountdown } from '@/features/business/EventsCountdown';
@@ -171,16 +173,13 @@ export default function BusinessPage({ business }: { business: Business }) {
       id: 'nosotros',
       label: 'Nosotros',
       content: (
-            <section aria-labelledby="nosotros-titulo" className="h-full flex flex-col">
+            <section aria-labelledby="nosotros-titulo">
           <h2 id="nosotros-titulo" className="mb-4" style={sectionTitle}>Nosotros</h2>
-          <Card padding="sm" className="p-4 flex-1 space-y-4">
-            <ImageCarousel images={business.aboutImages ?? []} alt={`Fotos de ${business.name}`} aspectClass="aspect-[2/1]" />
-            {paragraphs.length > 0 && (
-              <div className="space-y-3">
-                {paragraphs.map((p, i) => (
-                  <p key={i} className="text-base leading-relaxed">{p}</p>
-                ))}
-              </div>
+          <Card padding="sm" className="p-4 space-y-4">
+            <ImageCarousel images={business.aboutImages ?? []} alt={`Fotos de ${business.name}`} aspectClass="aspect-[5/3] md:aspect-[25/9]" />
+            <AboutText paragraphs={paragraphs} />
+            {!business.aboutImages?.length && paragraphs.length === 0 && amenities.length === 0 && (
+              <p className="text-sm text-center py-6 text-brand-dark/60">Aún no hay información del negocio.</p>
             )}
             {amenities.length > 0 && (
               <div>
@@ -213,7 +212,7 @@ export default function BusinessPage({ business }: { business: Business }) {
       id: 'resenas',
       label: 'Reseñas',
       content: (
-            <section aria-labelledby="resenas-titulo" className="h-full flex flex-col">
+            <section aria-labelledby="resenas-titulo">
           <h2 id="resenas-titulo" className="mb-4" style={sectionTitle}>Reseñas</h2>
           <ReviewsSection slug={business.slug} reviews={business.reviews} rating={business.stats.rating} reviewCount={business.stats.reviewCount} ratingCounts={business.stats.ratingCounts} />
             </section>      ),
@@ -229,6 +228,7 @@ export default function BusinessPage({ business }: { business: Business }) {
   return (
     <main className={`w-full pb-16 bg-brand-neutral-1 text-brand-dark ${business.coverUrl ? 'pt-16' : ''}`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <OwnerPreviewProvider>
 
       {/* Cabecera a sangre: portada con degradado, nombre y estadísticas */}
       {/* Con portada: imagen centrada y completa, con los datos debajo sobre el fondo claro de la página. Sin portada: fondo oscuro. */}
@@ -300,6 +300,7 @@ export default function BusinessPage({ business }: { business: Business }) {
 
       {/* La barra de Cómo llegar y Contactar solo se muestra en producción, no en local. */}
       {process.env.NODE_ENV === 'production' && <BottomBar mapHref={mapHref} contactHref={contactHref} />}
+      </OwnerPreviewProvider>
     </main>
   );
 }
