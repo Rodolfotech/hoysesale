@@ -6,10 +6,11 @@ interface PaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  showSinglePage?: boolean; // muestra la paginación aunque haya una sola página
 }
 
-export function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
-  if (totalPages <= 1) return null;
+export function Pagination({ currentPage, totalPages, onPageChange, showSinglePage = false }: PaginationProps) {
+  if (totalPages < 1 || (totalPages === 1 && !showSinglePage)) return null;
 
   function getPages(): (number | '...')[] {
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -23,7 +24,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
   const btnBase = 'w-9 h-9 rounded-lg flex items-center justify-center text-sm font-medium transition-all cursor-pointer';
 
   return (
-    <div className="flex items-center justify-center gap-1 mt-8">
+    <nav aria-label="Paginación" className="flex items-center justify-center gap-1 mt-8">
       <button
         type="button"
         onClick={() => onPageChange(currentPage - 1)}
@@ -49,6 +50,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
             key={page}
             type="button"
             onClick={() => onPageChange(page as number)}
+            aria-current={page === currentPage ? 'page' : undefined}
             className={btnBase}
             style={
               page === currentPage
@@ -75,6 +77,6 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
       >
         <ChevronRight className="w-4 h-4" />
       </button>
-    </div>
+    </nav>
   );
 }

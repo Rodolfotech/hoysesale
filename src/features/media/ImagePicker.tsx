@@ -91,10 +91,12 @@ export function ImagePicker({ label, value, onUpload, onChange, aspect = 'square
           <div className="w-full h-full flex items-center justify-center text-xs text-center px-3" style={{ color: '#1D1D1F99' }}>{droppable ? 'Arrastra tu imagen aquí' : 'Sin imagen'}</div>
         )}
       </div>
+      {/* El botón también acepta soltar el archivo, igual que la imagen. */}
       <label
         htmlFor={inputId}
         className="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium cursor-pointer focus-within:ring-2"
-        style={{ color: '#2563EB', border: '1px solid #2563EB', backgroundColor: '#FFFFFF', opacity: uploading ? 0.5 : 1 }}
+        style={{ color: '#2563EB', border: dragging ? '1px dashed #2563EB' : '1px solid #2563EB', backgroundColor: dragging ? '#EFF6FF' : '#FFFFFF', opacity: uploading ? 0.5 : 1 }}
+        {...dropProps}
       >
         <Upload className="w-4 h-4" aria-hidden="true" />
         {uploading ? 'Subiendo…' : value ? 'Cambiar imagen' : 'Subir imagen'}

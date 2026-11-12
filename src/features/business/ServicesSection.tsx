@@ -69,7 +69,7 @@ export function ServicesSection({ slug, toolbar, services, businessName, whatsap
             </li>
           ))}
         </ul>
-        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} showSinglePage />
         </>
       )}
     </section>

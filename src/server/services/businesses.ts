@@ -1,14 +1,15 @@
 import { randomUUID } from 'crypto';
+import { unavailableTabs } from '@/lib/business-rules';
 import { Prisma } from '@/generated/prisma/client';
 import { prisma } from '../db';
 import { badRequest, conflict, notFound } from '../http';
 import { BUSINESS_SLUG_MAX, slugProblem } from '../businesses/slug';
 import { ALLOWED_IMAGE_TYPES, getMediaStorage } from '../storage';
 import { activeEvents } from './events';
-import { ABOUT_MAX_IMAGES, COVER_IMAGE_TYPES, COVER_MAX_BYTES, COVER_SIZE, ITEM_IMAGE_MAX_BYTES, LOGO_IMAGE_TYPES, LOGO_MAX_BYTES, MAX_IMAGE_BYTES } from '@/lib/media-limits';
+import { ABOUT_MAX_IMAGES, COVER_IMAGE_TYPES, COVER_MAX_BYTES, COVER_SIZE, ITEM_IMAGE_MAX_BYTES, SERVICE_IMAGE_TYPES, LOGO_IMAGE_TYPES, LOGO_MAX_BYTES, MAX_IMAGE_BYTES } from '@/lib/media-limits';
 import imageSize from 'image-size';
 import type { z } from 'zod';
-import { redactHiddenTabs, type Business } from '@/lib/business';
+import { SERVICE_DESCRIPTION_MAX, SERVICE_TITLE_MAX, redactHiddenTabs, type Business } from '@/lib/business';
 import type { BusinessItemSchema, BusinessPageSchema, BusinessReviewSchema } from '../validation';
 
 type BusinessPage = z.output<typeof BusinessPageSchema>;
@@ -59,13 +60,15 @@ export function listBusinessSlugs() {
 
 // Micro-sitio público: datos, eventos vigentes, productos, servicios, destacados y reseñas.
 export async function getPublicBusiness(slug: string) {
-  const business = await prisma.user.findUnique({ where: { slug }, select: PUBLIC_BUSINESS_SELECT });
-  if (!business) return null;
+  const found = await prisma.user.findUnique({ where: { slug }, select: { ...PUBLIC_BUSINESS_SELECT, companyGiro: true } });
+  if (!found) return null;
+  // El giro solo se usa para calcular las pestañas: no se publica.
+  const { companyGiro, ...business } = found;
 
   const now = new Date();
   const ownerId = business.id;
   const order = [{ sortOrder: 'asc' as const }, { createdAt: 'asc' as const }];
-  const [events, products, services, highlights, reviews, aggregate] = await Promise.all([
+  const [events, products, services, highlights, reviews, aggregate, byRating] = await Promise.all([
     prisma.event.findMany({
       where: { ownerId, ...activeEvents(now) },
       orderBy: { date: 'asc' },
@@ -81,6 +84,7 @@ export async function getPublicBusiness(slug: string) {
       select: { id: true, rating: true, comment: true, createdAt: true, author: { select: { name: true, avatar: true } } },
     }),
     prisma.businessReview.aggregate({ where: { ownerId }, _avg: { rating: true }, _count: { _all: true } }),
+    prisma.businessReview.groupBy({ by: ['rating'], where: { ownerId }, _count: { _all: true } }),
   ]);
 
   // El id interno no se devuelve (el micro-sitio se identifica por su slug).
@@ -89,9 +93,11 @@ export async function getPublicBusiness(slug: string) {
   const years = Math.floor((now.getTime() - createdAt.getTime()) / (365 * 24 * 60 * 60 * 1000));
   return {
     ...publicBusiness,
+    unavailableTabs: unavailableTabs(business.category, companyGiro),
     stats: {
       rating: aggregate._avg.rating ? Math.round(aggregate._avg.rating * 10) / 10 : null,
       reviewCount: aggregate._count._all,
+      ratingCounts: [1, 2, 3, 4, 5].map((n) => byRating.find((row) => row.rating === n)?._count._all ?? 0),
       years,
     },
     events,
@@ -124,6 +130,7 @@ export async function createBusinessPage(userId: string, dto: BusinessPage) {
   if (!slug) throw badRequest('Ingresa la dirección de tu página');
   await assertSlugAvailable(slug, userId);
 
+  // Las pestañas que tiene la página dependen de la categoría y se calculan al mostrarla (unavailableTabs).
   return saveWithSlug(userId, { ...userData(fields), slug });
 }
 
@@ -186,17 +193,22 @@ export async function uploadBusinessImage(userId: string, kind: 'logo' | 'cover'
   });
 }
 
-// Imagen de un producto o servicio: WEBP de hasta 2 MB. Se revisa el contenido, no solo el tipo declarado.
-export async function uploadItemImage(userId: string, file: File): Promise<{ url: string }> {
-  if (file.type !== 'image/webp') throw badRequest('La imagen debe ser WEBP');
+// Imagen de un producto (WEBP) o de un servicio (WEBP, JPG o PNG), de hasta 2 MB.
+// Se revisa el contenido, no solo el tipo declarado.
+export async function uploadItemImage(userId: string, file: File, type: 'products' | 'services' = 'products'): Promise<{ url: string }> {
+  const allowed: Record<string, string> = type === 'services' ? SERVICE_IMAGE_TYPES : { 'image/webp': 'webp' };
+  const message = type === 'services' ? 'La imagen debe ser WEBP, JPG o PNG' : 'La imagen debe ser WEBP';
+  const ext = allowed[file.type];
+  if (!ext) throw badRequest(message);
   if (file.size > ITEM_IMAGE_MAX_BYTES) throw badRequest('La imagen es muy pesada. Tamaño máximo 2 MB');
   const buffer = Buffer.from(await file.arrayBuffer());
   try {
-    if (imageSize(buffer).type !== 'webp') throw new Error();
+    const real = imageSize(buffer).type;
+    if ((real === 'jpg' ? 'jpg' : real) !== ext) throw new Error();
   } catch {
-    throw badRequest('La imagen debe ser WEBP');
+    throw badRequest(message);
   }
-  return { url: await getMediaStorage().upload(`${userId}/business/item-${randomUUID()}.webp`, buffer, file.type) };
+  return { url: await getMediaStorage().upload(`${userId}/business/item-${randomUUID()}.${ext}`, buffer, file.type) };
 }
 
 // Productos, servicios y destacados del dueño.
@@ -303,6 +315,8 @@ function itemData(type: BusinessItemType, dto: BusinessItem, partial: boolean): 
   } else {
     if (!partial && !dto.title) throw badRequest('Falta el título');
     if (dto.title !== undefined) out.title = dto.title.trim();
+    if (type === 'services' && dto.title && dto.title.trim().length > SERVICE_TITLE_MAX) throw badRequest(`El nombre del servicio admite hasta ${SERVICE_TITLE_MAX} caracteres`);
+    if (type === 'services' && dto.description && dto.description.length > SERVICE_DESCRIPTION_MAX) throw badRequest(`La descripción del servicio admite hasta ${SERVICE_DESCRIPTION_MAX} caracteres`);
     if (type === 'highlights' && !partial && !dto.imageUrl) throw badRequest('El destacado necesita una imagen');
     if (dto.imageUrl !== undefined) out.imageUrl = dto.imageUrl;
     if (type === 'services' && dto.tags !== undefined) out.tags = dto.tags ?? [];
@@ -318,12 +332,14 @@ export async function getBusinessPage(slug: string): Promise<Business | null> {
   return business ? (JSON.parse(JSON.stringify(business)) as Business) : null;
 }
 
-// La página según quién la mira: las pestañas ocultas solo se envían a su dueño.
+// La página según quién la mira: las pestañas ocultas solo se envían a su dueño, y las que su categoría
+// no tiene no se envían a nadie.
 export async function getBusinessPageFor(slug: string, viewerId: string | null): Promise<Business | null> {
   const business = await getBusinessPage(slug);
-  if (!business || business.hiddenTabs.length === 0) return business;
+  if (!business) return null;
+  if (business.hiddenTabs.length === 0 && business.unavailableTabs.length === 0) return business;
   const isOwner = viewerId !== null && (await prisma.user.count({ where: { id: viewerId, slug } })) > 0;
-  return isOwner ? business : redactHiddenTabs(business);
+  return redactHiddenTabs(business, isOwner);
 }
 
 // Disponibilidad de una URL. Si ya está en uso, sugiere la primera variante con número libre (rodolfoparada2).

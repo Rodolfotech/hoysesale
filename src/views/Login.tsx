@@ -12,6 +12,7 @@ import { GradientButton } from '../components/ui/GradientButton';
 import { ErrorBanner } from '../components/ui/ErrorBanner';
 import { GoogleOAuthButton } from '../features/auth/GoogleOAuthButton';
 import { AuthDivider } from '../features/auth/AuthDivider';
+import { googleResultFrom } from '../features/auth/googleMessage';
 
 export default function Login() {
   const [email, setEmail] = usePersistentState('draft:login:email', '');
@@ -24,22 +25,21 @@ export default function Login() {
 
   useEffect(() => {
     const handleMessage = async (e: MessageEvent) => {
-      if (e.data?.type === 'google-code') {
-        if (e.data.error) {
+      const result = googleResultFrom(e);
+      if (result) {
+        if ('error' in result) {
           setGoogleLoading(false);
           setError('Error al iniciar sesión con Google');
           return;
         }
-        if (e.data.code) {
-          try {
-            // El backend deja la cookie de sesión; hay que cargar el usuario en el contexto antes de navegar.
-            const { data } = await authApi.googleLogin(e.data.code);
-            setUser(data.user);
-            navigate('/profile');
-          } catch {
-            setGoogleLoading(false);
-            setError('Error al iniciar sesión con Google');
-          }
+        try {
+          // El backend deja la cookie de sesión; hay que cargar el usuario en el contexto antes de navegar.
+          const { data } = await authApi.googleLogin(result.code);
+          setUser(data.user);
+          navigate('/profile');
+        } catch {
+          setGoogleLoading(false);
+          setError('Error al iniciar sesión con Google');
         }
       }
     };

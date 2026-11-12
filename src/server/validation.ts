@@ -2,10 +2,11 @@ import { ADDRESS_LABELS, BUSINESS_DESCRIPTION_MAX, HIDEABLE_TABS, INSTAGRAM_LABE
 import { z } from 'zod';
 import { COMUNAS } from '@/constants/comunas';
 import { BUSINESS_AMENITIES, BUSINESS_CATEGORIES } from '@/constants/business';
+import { GIRO_OPTIONS } from '@/constants/giros';
 import { AUDIENCES, ENTRY_TYPES, INTERACTION_TYPES } from './events/filters';
 import { hoursProblem } from '@/lib/hours';
 import { ABOUT_MAX_IMAGES } from '@/lib/media-limits';
-import { formatRut, isValidRut } from '@/lib/rut';
+import { companyRutError, formatRut, isValidRut } from '@/lib/rut';
 
 const COMUNA_MESSAGE = 'Selecciona una comuna de la Región de La Araucanía';
 
@@ -34,7 +35,15 @@ const COMPANY_ADDRESS = requiredText('La dirección de la empresa es obligatoria
 const COMPANY_PHONE = z.string({ message: 'El teléfono de la empresa es obligatorio' }).regex(PHONE_CL, PHONE_MESSAGE);
 const rutSchema = (who: string) =>
   z.string({ message: `${who} es obligatorio` }).trim().refine(isValidRut, `${who} no es válido`).transform(formatRut);
-const COMPANY_RUT = rutSchema('El RUT de la empresa');
+// La empresa debe tener RUT de persona jurídica (desde 50.000.000), además de un dígito verificador correcto.
+const COMPANY_RUT = z
+  .string({ message: 'El RUT de la empresa es obligatorio' })
+  .trim()
+  .superRefine((value, ctx) => {
+    const error = companyRutError(value);
+    if (error) ctx.addIssue({ code: 'custom', message: error });
+  })
+  .transform(formatRut);
 
 // Las URL se escriben sin protocolo (www.mitienda.cl) o con http://: se guardan como https://.
 const toHttps = (value: string) => 'https://' + value.trim().replace(/^https?:\/\//i, '');
@@ -97,7 +106,7 @@ export const ProfileUpdateSchema = z.object({
   companyInstagram: INSTAGRAM.optional(),
   website: z.string().nullish(), // el único dato de la empresa que no es obligatorio
   companyRut: COMPANY_RUT.optional(),
-  companyGiro: requiredText('El giro de la empresa es obligatorio', 100).optional(),
+  companyGiro: z.enum(GIRO_OPTIONS, { message: 'Selecciona el giro de la empresa' }).optional(),
   companyPhone: COMPANY_PHONE.optional(),
   companyAddress: COMPANY_ADDRESS.optional(),
   city: requiredText('La ciudad de la empresa es obligatoria', 60).optional(),

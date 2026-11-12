@@ -3,6 +3,7 @@ import { redactHiddenTabs, type Business } from './business';
 
 const business = {
   hiddenTabs: [],
+  unavailableTabs: [],
   contactInAllTabs: false,
   companyAddress: 'Calle 1',
   companyPhone: '+56934567890',
@@ -49,5 +50,15 @@ describe('redactHiddenTabs', () => {
   it('los conserva si el dueño pidió mostrarlos en todas las pestañas', () => {
     const result = redactHiddenTabs({ ...hide('contactanos'), contactInAllTabs: true });
     expect(result.companyAddress).toBe('Calle 1');
+  });
+
+
+  it('las pestañas que la categoría no tiene se quitan también al dueño', () => {
+    const page = { ...hide('horario'), unavailableTabs: ['eventos', 'productos'] } as Business;
+    const owner = redactHiddenTabs(page, true);
+    expect(owner.events).toEqual([]);
+    expect(owner.products).toEqual([]);
+    expect(owner.hours).toEqual(business.hours); // el dueño ve lo que él ocultó
+    expect(redactHiddenTabs(page).hours).toBeNull(); // el visitante no
   });
 });

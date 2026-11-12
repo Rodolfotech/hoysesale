@@ -45,7 +45,10 @@ function AddItemDialog({ type, amenities, onSaved, onClose }: AddItemDialogProps
 
   return (
     <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
-      <h2 className="text-lg font-semibold" style={{ color: '#1D1D1F' }}>Agregar {nounOf(type)}</h2>
+      <div>
+        <h2 className="text-lg font-semibold" style={{ color: '#1D1D1F' }}>Agregar {nounOf(type)}</h2>
+        {type === 'services' && <p className="text-xs mt-0.5" style={{ color: '#1D1D1F99' }}>Los campos con * son obligatorios.</p>}
+      </div>
       <OfferItemForm type={type} onSaved={() => { onClose(); onSaved(); }} onCancel={onClose} />
       <OfferExtras amenities={selected} onAmenitiesChange={changeAmenities} disabled={saving} />
       {error && <p role="alert" className="text-sm" style={{ color: '#DC2626' }}>{error}</p>}

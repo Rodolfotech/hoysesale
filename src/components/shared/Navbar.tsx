@@ -3,6 +3,8 @@
 import { Link, useLocation, useNavigate } from '@/lib/router';
 import { useAuth } from '../../context/AuthContext';
 import { ADMIN_ROUTE } from '../../constants/admin';
+import { CreateBusinessPage } from '../../features/business/CreateBusinessPage';
+import { EVENTS_NOT_ALLOWED_MESSAGE, canPublishEvents } from '@/lib/business-rules';
 import {
   LogIn,
   User,
@@ -20,10 +22,13 @@ const navLinks = [
 ];
 
 export default function Navbar() {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, setUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Publicar evento solo se habilita para las categorías que publican eventos (el servidor también lo valida).
+  const canPublish = canPublishEvents(user?.category, user?.companyGiro);
+  const disabledHint = `${EVENTS_NOT_ALLOWED_MESSAGE} Revisa la categoría en tu perfil.`;
 
   const handleNavClick = (to: string) => {
     if (to.startsWith('/#')) {
@@ -78,13 +83,26 @@ export default function Navbar() {
                     Ir a página
                   </a>
                 )}
-                <Link
-                  to="/create-event"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: '#2563EB' }}
-                >
-                  Publicar evento
-                </Link>
+                {canPublish ? (
+                  <Link
+                    to="/create-event"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: '#2563EB' }}
+                  >
+                    Publicar evento
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    title={disabledHint}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white opacity-40 cursor-not-allowed"
+                    style={{ backgroundColor: '#2563EB' }}
+                  >
+                    Publicar evento
+                  </button>
+                )}
+                {user && <CreateBusinessPage user={user} onUpdated={(patch) => setUser({ ...user, ...patch })} />}
                 {user?.role === 'ADMIN' && (
                   <Link
                     to={ADMIN_ROUTE}
@@ -177,14 +195,35 @@ export default function Navbar() {
                     Ir a página
                   </a>
                 )}
-                <Link
-                  to="/create-event"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-white"
-                  style={{ backgroundColor: '#2563EB' }}
-                >
-                  Publicar evento
-                </Link>
+                {canPublish ? (
+                  <Link
+                    to="/create-event"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-white"
+                    style={{ backgroundColor: '#2563EB' }}
+                  >
+                    Publicar evento
+                  </Link>
+                ) : (
+                  <div>
+                    <button
+                      type="button"
+                      disabled
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-white w-full opacity-40 cursor-not-allowed"
+                      style={{ backgroundColor: '#2563EB' }}
+                    >
+                      Publicar evento
+                    </button>
+                    <p className="text-xs px-3 pt-1" style={{ color: '#1D1D1F99' }}>{disabledHint}</p>
+                  </div>
+                )}
+                {user && (
+                  <CreateBusinessPage
+                    user={user}
+                    onUpdated={(patch) => setUser({ ...user, ...patch })}
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-white w-full cursor-pointer"
+                  />
+                )}
                 {user?.role === 'ADMIN' && (
                   <Link
                     to={ADMIN_ROUTE}

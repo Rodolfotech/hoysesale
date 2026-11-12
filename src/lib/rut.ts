@@ -22,6 +22,34 @@ export function isValidRut(value: string): boolean {
   return rut !== null && checkDigit(rut.body) === rut.dv;
 }
 
+// El SII asigna a las personas jurídicas (SpA, Ltda., SA, EIRL, fundaciones) RUT desde 50.000.000.
+// Los menores corresponden a personas naturales.
+export const COMPANY_RUT_MIN = 50_000_000;
+
+export function isCompanyRut(value: string): boolean {
+  const rut = parts(value);
+  return isValidRut(value) && rut !== null && Number(rut.body) >= COMPANY_RUT_MIN;
+}
+
+// Mensaje del RUT de la empresa, o null si es válido. Lo usan el perfil y el servidor.
+export function companyRutError(value: string): string | null {
+  if (!isValidRut(value)) return 'El RUT de la empresa no es válido. Revisa el dígito verificador (el número después del guion).';
+  if (!isCompanyRut(value)) return 'El RUT de la empresa debe ser de persona jurídica (desde 50.000.000).';
+  return null;
+}
+
+// Formatea mientras se escribe: deja solo dígitos y una K final (máx. 9) y agrega puntos y guion.
+// "740004" → "74.000-4", "740008885" → "74.000.888-5".
+export function formatRutInput(value: string): string {
+  const clean = value.toUpperCase().replace(/[^0-9K]/g, '');
+  const digits = clean.replace(/K/g, '');
+  const endsWithK = clean.endsWith('K') && digits.length >= 7;
+  const chars = (endsWithK ? digits + 'K' : digits).slice(0, 9);
+  if (chars.length < 2) return chars;
+  const body = chars.slice(0, -1).replace(/\B(?=(\d{3})+$)/g, '.');
+  return `${body}-${chars.slice(-1)}`;
+}
+
 // Formato con puntos y guion: 76.123.456-K. Devuelve el valor original si no es un RUT.
 export function formatRut(value: string): string {
   const rut = parts(value);

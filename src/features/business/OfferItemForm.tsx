@@ -3,10 +3,9 @@
 import { useState } from 'react';
 import { apiErrorMessage } from '@/lib/api-error';
 import { businessApi } from '../../api';
-import { SERVICE_TAGS_MAX, SERVICE_TAG_MAX_LENGTH } from '@/lib/business';
 import { FormInput } from '../../components/ui/FormInput';
-import { TagInput } from '../../components/ui/TagInput';
 import { OfferImagePicker } from './OfferImagePicker';
+import { ServiceFields } from './ServiceFields';
 import type { OfferItem } from './offer';
 
 interface OfferItemFormProps {
@@ -56,6 +55,7 @@ export function OfferItemForm({ type, item, onSaved, onCancel }: OfferItemFormPr
 
   return (
     <div className="space-y-3">
+      {isProduct ? (<>
       <div className="grid grid-cols-2 gap-3">
         <FormInput label={`Nombre del ${noun}`} value={name} onChange={(e) => setName(e.target.value)} />
         {isProduct && (
@@ -63,8 +63,15 @@ export function OfferItemForm({ type, item, onSaved, onCancel }: OfferItemFormPr
         )}
       </div>
       <FormInput label="Descripción (opcional)" value={description} onChange={(e) => setDescription(e.target.value)} />
-      {!isProduct && <TagInput label="Etiquetas (opcional)" value={tags} onChange={setTags} max={SERVICE_TAGS_MAX} maxLength={SERVICE_TAG_MAX_LENGTH} />}
       <OfferImagePicker type={type} label={`Imagen del ${noun} (opcional)`} value={imageUrl || null} onChange={setImageUrl} />
+      </>) : (
+        <ServiceFields
+          name={name} onNameChange={setName}
+          description={description} onDescriptionChange={setDescription}
+          tags={tags} onTagsChange={setTags}
+          imageUrl={imageUrl} onImageChange={setImageUrl}
+        />
+      )}
       <div className="flex items-center gap-3">
         <button type="button" onClick={save} disabled={busy || !name.trim()} className="px-4 py-2 rounded-xl text-sm font-medium text-white cursor-pointer disabled:opacity-50" style={{ backgroundColor: '#2563EB' }}>
           {busy ? 'Guardando...' : item ? 'Guardar cambios' : `Agregar ${noun}`}

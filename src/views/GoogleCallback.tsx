@@ -12,12 +12,13 @@ export default function GoogleCallback() {
     if (!window.opener) return;
 
     if (!code) {
-      window.opener.postMessage({ type: 'google-code', error: true }, '*');
+      window.opener.postMessage({ type: 'google-code', error: true }, window.location.origin);
       window.close();
       return;
     }
 
-    window.opener.postMessage({ type: 'google-code', code }, '*');
+    // Solo a una página de este mismo sitio: el código no debe llegar a otro dominio.
+    window.opener.postMessage({ type: 'google-code', code }, window.location.origin);
     window.close();
   }, [searchParams]);
 

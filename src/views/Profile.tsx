@@ -6,7 +6,7 @@ import { socialApi, usersApi } from '../api';
 import { InstagramLinkModal } from '../features/social/InstagramLinkModal';
 import { SocialPostCard } from '../features/social/SocialPostCard';
 import { Toast } from '../components/ui/Toast';
-import { ProfileField } from '../components/ui/ProfileField';
+import { PROFILE_LABEL_STYLE, ProfileField } from '../components/ui/ProfileField';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import {
   Camera,
@@ -21,11 +21,38 @@ import {
 } from 'lucide-react';
 import { COMUNAS } from '../constants/comunas';
 import { splitAddress } from '../features/business/BusinessForm';
-import { BUSINESS_CATEGORIES } from '../constants/business';
+import { BUSINESS_CATEGORY_GROUPS, isBusinessCategory } from '../constants/business';
+import { GIRO_SELECT_GROUPS, isGiroOption } from '../constants/giros';
 import { InstagramInput, instagramHandleFrom, instagramValueFrom } from '../components/ui/InstagramInput';
 import type { SocialPost } from '../types';
 import { apiErrorMessage } from '@/lib/api-error';
-import { isValidRut } from '@/lib/rut';
+import { companyRutError, formatRut, formatRutInput, isValidRut } from '@/lib/rut';
+import { CompleteProfileModal, requiredProfileItems } from '../features/profile/CompleteProfileModal';
+
+// Texto del popover de cada campo obligatorio del perfil.
+// Móvil chileno: +569 y 8 dígitos que no empiezan con 1 ni 2 (igual que el servidor).
+const PHONE_PATTERN = /^\+569[3-9]\d{7}$/;
+const validPhone = (value: string | null | undefined) => (value && PHONE_PATTERN.test(value) ? value : '');
+
+const REQUIRED_INFO: Record<string, string> = {
+  'Nombre de empresa': 'El nombre de la empresa es obligatorio.',
+  'Instagram empresa': 'El Instagram de la empresa es obligatorio.',
+  'Rut de empresa': 'El RUT de la empresa es obligatorio. Debe ser de persona jurídica (desde 50.000.000), por ejemplo 76.086.428-5.',
+  'Giro de empresa': 'El giro de la empresa es obligatorio. Elige la actividad registrada en el SII; el número entre paréntesis es su código.',
+  'Teléfono empresa': 'El teléfono de la empresa es obligatorio. Empieza con +569: ingresa los 8 dígitos restantes.',
+  'Correo electrónico empresa': 'El correo electrónico de la empresa es obligatorio.',
+  'Calle': 'La calle de la dirección de la empresa es obligatoria.',
+  'Número': 'El número de la dirección de la empresa es obligatorio.',
+  'Categoría': 'Elige el rubro o categoría que mejor describe a tu empresa. Es obligatorio.',
+  'Ciudad': 'La ciudad de la empresa es obligatoria.',
+  'Comuna': 'La comuna de la empresa es obligatoria. Solo podrás publicar eventos de esta comuna.',
+  'Nombre de administrador': 'El nombre del administrador es obligatorio.',
+  'Apellidos de administrador': 'Los apellidos del administrador son obligatorios.',
+  'Rut administrador': 'El RUT del administrador es obligatorio.',
+  'Teléfono administrador': 'El teléfono del administrador es obligatorio. Empieza con +569: ingresa los 8 dígitos restantes.',
+  'Correo electrónico administrador': 'El correo electrónico del administrador es obligatorio.',
+};
+
 
 const CIUDADES = ['Villarrica', 'Pucón', 'Temuco', 'Loncoche', 'Freire', 'Cunco', 'Curarrehue', 'Lautaro', 'Pitrufquén', 'Gorbea'] as const;
 
@@ -37,6 +64,20 @@ export default function Profile() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [editing, setEditing] = useState(false);
+  // Aviso de datos obligatorios: aparece al entrar mientras falten datos (cuenta nueva, por formulario o Google).
+  const [requiredNoticeClosed, setRequiredNoticeClosed] = useState(false);
+  const requiredItems = user ? requiredProfileItems(user) : [];
+
+  // Abre la edición y lleva el foco al campo elegido en el aviso.
+  const goToField = (fieldId: string) => {
+    setRequiredNoticeClosed(true);
+    setEditing(true);
+    setTimeout(() => {
+      const field = document.getElementById(fieldId);
+      field?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      field?.focus({ preventScroll: true });
+    }, 50);
+  };
   const [saving, setSaving] = useState(false);
   const [instagramPosts, setInstagramPosts] = useState<SocialPost[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
@@ -68,19 +109,19 @@ export default function Profile() {
         name: user.name || '',
         companyInstagram: instagramHandleFrom(user.companyInstagram),
         website: user.website || '',
-        companyRut: user.companyRut || '',
-        companyGiro: user.companyGiro || '',
-        companyPhone: user.companyPhone || '',
+        companyRut: formatRut(user.companyRut || ''),
+        companyGiro: isGiroOption(user.companyGiro) ? user.companyGiro! : '', // un giro escrito a mano obliga a elegir de nuevo
+        companyPhone: validPhone(user.companyPhone), // un teléfono con otro formato obliga a ingresarlo de nuevo
         email: user.email || '',
         companyStreet: splitAddress(user.companyAddress)[0],
         companyNumber: splitAddress(user.companyAddress)[1],
-        category: user.category || '',
+        category: isBusinessCategory(user.category) ? user.category : '', // una categoría antigua obliga a elegir de nuevo
         city: user.city || '',
         comuna: user.comuna || '',
         adminFirstName: user.adminFirstName || '',
         adminLastName: user.adminLastName || '',
-        adminRut: user.adminRut || '',
-        adminPhone: user.adminPhone || '',
+        adminRut: formatRut(user.adminRut || ''),
+        adminPhone: validPhone(user.adminPhone),
       });
     }
   }, [user]);
@@ -129,42 +170,42 @@ export default function Profile() {
     !postFilter || (post.caption || '').toLowerCase().includes(postFilter.toLowerCase()),
   );
 
+  // Guarda lo que ya está completo, aunque falten otros datos obligatorios: se puede avanzar de a poco.
+  // Los campos vacíos no se envían (el servidor no permite vaciar un dato obligatorio) y los completos se validan.
   const handleSave = async () => {
-    // Todos los datos de la empresa son obligatorios, salvo el sitio web. La comuna define dónde puede publicar eventos.
-    const companyFields: [string, string][] = [
-      ['nombre', form.name], ['Instagram', form.companyInstagram], ['RUT', form.companyRut], ['giro', form.companyGiro],
-      ['teléfono', form.companyPhone], ['calle', form.companyStreet], ['número', form.companyNumber],
-      ['categoría', form.category], ['ciudad', form.city], ['comuna', form.comuna],
-    ];
-    const missing = companyFields.filter(([, value]) => !value?.trim()).map(([label]) => label);
-    if (missing.length > 0) {
-      setToast({ message: `Completa los datos de la empresa: ${missing.join(', ')}`, type: 'error' });
+    const filled = (value: string) => value.trim() !== '';
+    const errors: string[] = [];
+    if (filled(form.companyPhone) && !PHONE_PATTERN.test(form.companyPhone)) errors.push('El teléfono de la empresa debe tener 8 dígitos después del +569');
+    if (filled(form.companyRut)) {
+      const rutError = companyRutError(form.companyRut);
+      if (rutError) errors.push(rutError);
+    }
+    if (filled(form.companyStreet) !== filled(form.companyNumber)) errors.push('Completa la calle y el número de la dirección');
+    if (filled(form.adminPhone) && !PHONE_PATTERN.test(form.adminPhone)) errors.push('El teléfono del administrador debe tener 8 dígitos después del +569');
+    if (filled(form.adminRut) && !isValidRut(form.adminRut)) errors.push('El RUT del administrador no es válido');
+    if (errors.length > 0) {
+      setToast({ message: errors[0], type: 'error' });
       return;
     }
-    if (!isValidRut(form.companyRut)) {
-      setToast({ message: 'El RUT de la empresa no es válido', type: 'error' });
-      return;
-    }
-    // El administrador es el representante legal: también todos sus datos son obligatorios.
-    const adminFields: [string, string][] = [
-      ['nombre', form.adminFirstName], ['apellidos', form.adminLastName], ['RUT', form.adminRut], ['teléfono', form.adminPhone],
-    ];
-    const missingAdmin = adminFields.filter(([, value]) => !value?.trim()).map(([label]) => label);
-    if (missingAdmin.length > 0) {
-      setToast({ message: `Completa los datos del administrador: ${missingAdmin.join(', ')}`, type: 'error' });
-      return;
-    }
-    if (!isValidRut(form.adminRut)) {
-      setToast({ message: 'El RUT del administrador no es válido', type: 'error' });
-      return;
-    }
+
+    const { email: _email, companyStreet, companyNumber, companyInstagram, website, ...rest } = form;
+    const data: Parameters<typeof usersApi.updateProfile>[0] = Object.fromEntries(Object.entries(rest).filter(([, value]) => filled(value)));
+    if (filled(companyInstagram)) data.companyInstagram = instagramValueFrom(companyInstagram);
+    // La dirección se guarda como un solo texto: "Calle 123".
+    if (filled(companyStreet) && filled(companyNumber)) data.companyAddress = `${companyStreet.trim()} ${companyNumber}`;
+    data.website = website.trim() || null; // opcional: vacío lo borra
+
     setSaving(true);
     try {
-      const { email: _email, companyStreet, companyNumber, category, companyInstagram, ...data } = form;
-      // La dirección se guarda como un solo texto: "Calle 123".
-      await usersApi.updateProfile({ ...data, companyInstagram: instagramValueFrom(companyInstagram), category, companyAddress: `${companyStreet.trim()} ${companyNumber}` });
+      const { data: updated } = await usersApi.updateProfile(data);
+      const nextUser = { ...user!, ...updated };
+      setUser(nextUser);
       setEditing(false);
-      setToast({ message: 'Datos actualizados correctamente', type: 'success' });
+      setRequiredNoticeClosed(true);
+      const pending = requiredProfileItems(nextUser).filter((item) => !item.done).length;
+      setToast(pending > 0
+        ? { message: `Datos guardados. Te ${pending === 1 ? 'falta 1 dato obligatorio' : `faltan ${pending} datos obligatorios`}.`, type: 'success' }
+        : { message: 'Datos actualizados correctamente', type: 'success' });
     } catch (err) {
       setToast({ message: apiErrorMessage(err, 'Error al guardar los datos'), type: 'error' });
     } finally {
@@ -186,6 +227,8 @@ export default function Profile() {
   };
 
   const set = (key: keyof typeof form) => (val: string) => setForm(prev => ({ ...prev, [key]: val }));
+  // Los RUT se muestran con puntos y guion mientras se escriben: 74.000.888-5.
+  const setRut = (key: 'companyRut' | 'adminRut') => (val: string) => set(key)(formatRutInput(val));
 
   return (
     <div className="min-h-screen pt-16" style={{ backgroundColor: '#FFFFFF' }}>
@@ -256,22 +299,22 @@ export default function Profile() {
             </p>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-            <ProfileField label="Nombre de empresa organizadora" value={form.name} editing={editing} onChange={set('name')} placeholder="Ingrese nombre de empresa" required />
+            <ProfileField id="perfil-nombre" label="Nombre de empresa" info={REQUIRED_INFO['Nombre de empresa']} value={form.name} editing={editing} onChange={set('name')} placeholder="Ingrese nombre de empresa" required />
             {editing ? (
-              <InstagramInput label="Instagram empresa organizadora" value={form.companyInstagram} onChange={set('companyInstagram')} />
+              <InstagramInput id="perfil-instagram" label="Instagram empresa" labelStyle={PROFILE_LABEL_STYLE} required info={<p>{REQUIRED_INFO['Instagram empresa']}</p>} value={form.companyInstagram} onChange={set('companyInstagram')} />
             ) : (
-              <ProfileField label="Instagram empresa organizadora" value={form.companyInstagram ? `@${form.companyInstagram}` : ''} editing={false} onChange={set('companyInstagram')} placeholder="Ingrese cuenta de instagram" required />
+              <ProfileField label="Instagram empresa" info={REQUIRED_INFO['Instagram empresa']} value={form.companyInstagram ? `@${form.companyInstagram}` : ''} editing={false} onChange={set('companyInstagram')} placeholder="Ingrese cuenta de instagram" required />
             )}
             <ProfileField label="Sitio web" value={form.website} editing={editing} onChange={set('website')} placeholder="Ingrese sitio web" />
-            <ProfileField label="Rut de empresa" value={form.companyRut} editing={editing} onChange={set('companyRut')} placeholder="Ingrese RUT de empresa" required />
-            <ProfileField label="Giro de empresa" value={form.companyGiro} editing={editing} onChange={set('companyGiro')} placeholder="Ingrese giro comercial de empresa" required />
-            <ProfileField label="Teléfono empresa" value={form.companyPhone} editing={editing} onChange={set('companyPhone')} placeholder="Ingrese teléfono de empresa" type="tel" required />
-            <ProfileField label="Correo electrónico empresa" value={form.email} editing={editing} onChange={set('email')} placeholder="Ingrese correo electrónico de empresa" type="email" required disabled />
-            <ProfileField label="Calle" value={form.companyStreet} editing={editing} onChange={(v) => setForm(prev => ({ ...prev, companyStreet: v.slice(0, 50) }))} placeholder="Nombre de la calle" required />
-            <ProfileField label="Número" value={form.companyNumber} editing={editing} onChange={(v) => setForm(prev => ({ ...prev, companyNumber: v.replace(/\D/g, '').slice(0, 6) }))} placeholder="Número" required />
-            <ProfileField label="Categoría" value={form.category} editing={editing} onChange={set('category')} placeholder="Seleccione categoría" type="select" options={BUSINESS_CATEGORIES} required />
-            <ProfileField label="Ciudad" value={form.city} editing={editing} onChange={set('city')} placeholder="Seleccione Ciudad" type="select" options={CIUDADES} required />
-            <ProfileField label="Comuna" value={form.comuna} editing={editing} onChange={set('comuna')} placeholder="Seleccione Comuna" type="select" options={COMUNAS} required />
+            <ProfileField id="perfil-rut" label="Rut de empresa" info={REQUIRED_INFO['Rut de empresa']} value={form.companyRut} editing={editing} onChange={setRut('companyRut')} placeholder="Ej: 74.000.888-5" required />
+            <ProfileField id="perfil-giro" label="Giro de empresa" info={REQUIRED_INFO['Giro de empresa']} value={form.companyGiro} editing={editing} onChange={set('companyGiro')} placeholder="Elige el giro de la empresa" type="select" groups={GIRO_SELECT_GROUPS} required />
+            <ProfileField id="perfil-telefono" label="Teléfono empresa" info={REQUIRED_INFO['Teléfono empresa']} value={form.companyPhone} editing={editing} onChange={set('companyPhone')} type="phone" required />
+            <ProfileField label="Correo electrónico empresa" info={REQUIRED_INFO['Correo electrónico empresa']} value={form.email} editing={editing} onChange={set('email')} placeholder="Ingrese correo electrónico de empresa" type="email" required disabled />
+            <ProfileField id="perfil-calle" label="Calle" info={REQUIRED_INFO['Calle']} value={form.companyStreet} editing={editing} onChange={(v) => setForm(prev => ({ ...prev, companyStreet: v.slice(0, 50) }))} placeholder="Nombre de la calle" required />
+            <ProfileField label="Número" info={REQUIRED_INFO['Número']} value={form.companyNumber} editing={editing} onChange={(v) => setForm(prev => ({ ...prev, companyNumber: v.replace(/\D/g, '').slice(0, 6) }))} placeholder="Número" required />
+            <ProfileField id="perfil-categoria" label="Categoría" info={REQUIRED_INFO['Categoría']} value={form.category} editing={editing} onChange={set('category')} placeholder="Elige una categoría" type="select" groups={BUSINESS_CATEGORY_GROUPS} required />
+            <ProfileField id="perfil-ciudad" label="Ciudad" info={REQUIRED_INFO['Ciudad']} value={form.city} editing={editing} onChange={set('city')} placeholder="Seleccione Ciudad" type="select" options={CIUDADES} required />
+            <ProfileField id="perfil-comuna" label="Comuna" info={REQUIRED_INFO['Comuna']} value={form.comuna} editing={editing} onChange={set('comuna')} placeholder="Seleccione Comuna" type="select" options={COMUNAS} required />
           </div>
         </div>
 
@@ -286,11 +329,11 @@ export default function Profile() {
             </p>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-            <ProfileField label="Nombre de administrador" value={form.adminFirstName} editing={editing} onChange={set('adminFirstName')} placeholder="Ingrese nombre" required />
-            <ProfileField label="Apellidos de administrador" value={form.adminLastName} editing={editing} onChange={set('adminLastName')} placeholder="Ingrese apellidos" required />
-            <ProfileField label="Rut administrador" value={form.adminRut} editing={editing} onChange={set('adminRut')} placeholder="Ingrese RUT de administrador" required />
-            <ProfileField label="Teléfono administrador" value={form.adminPhone} editing={editing} onChange={set('adminPhone')} placeholder="Ingrese número de teléfono" type="tel" required />
-            <ProfileField label="Correo electrónico administrador" value={form.email} editing={editing} onChange={set('email')} placeholder="Ingrese correo electrónico" type="email" required disabled />
+            <ProfileField id="perfil-admin-nombre" label="Nombre de administrador" info={REQUIRED_INFO['Nombre de administrador']} value={form.adminFirstName} editing={editing} onChange={set('adminFirstName')} placeholder="Ingrese nombre" required />
+            <ProfileField id="perfil-admin-apellidos" label="Apellidos de administrador" info={REQUIRED_INFO['Apellidos de administrador']} value={form.adminLastName} editing={editing} onChange={set('adminLastName')} placeholder="Ingrese apellidos" required />
+            <ProfileField id="perfil-admin-rut" label="Rut administrador" info={REQUIRED_INFO['Rut administrador']} value={form.adminRut} editing={editing} onChange={setRut('adminRut')} placeholder="Ingrese RUT de administrador" required />
+            <ProfileField id="perfil-admin-telefono" label="Teléfono administrador" info={REQUIRED_INFO['Teléfono administrador']} value={form.adminPhone} editing={editing} onChange={set('adminPhone')} type="phone" required />
+            <ProfileField label="Correo electrónico administrador" info={REQUIRED_INFO['Correo electrónico administrador']} value={form.email} editing={editing} onChange={set('email')} placeholder="Ingrese correo electrónico" type="email" required disabled />
             {editing && (
               <div className="flex items-end">
                 <button
@@ -487,6 +530,7 @@ export default function Profile() {
         onSuccess={handleLinkSuccess}
         onError={handleLinkError}
       />
+      <CompleteProfileModal items={requiredItems} isOpen={!editing && !requiredNoticeClosed} onClose={() => setRequiredNoticeClosed(true)} onGoTo={goToField} />
       <Toast
         message={toast?.message || ''}
         type={toast?.type || 'success'}

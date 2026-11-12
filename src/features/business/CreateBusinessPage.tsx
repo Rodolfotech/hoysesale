@@ -9,10 +9,11 @@ import { BusinessForm, slugifyName, type BusinessFormPayload } from './BusinessF
 interface CreateBusinessPageProps {
   user: User;
   onUpdated: (patch: Partial<User>) => void;
+  className?: string; // estilo del botón (el navbar usa uno para escritorio y otro para móvil)
 }
 
-// Botón "Crear página" (o "Ir a página" si ya existe) y su modal de creación.
-export function CreateBusinessPage({ user, onUpdated }: CreateBusinessPageProps) {
+// Botón "Crear página" del navbar y su modal de creación. Si la página ya existe, el navbar muestra "Ir a página".
+export function CreateBusinessPage({ user, onUpdated, className }: CreateBusinessPageProps) {
   const [open, setOpen] = useState(false);
 
   // Con página creada, el acceso está en el navbar ("Ir a página").
@@ -28,7 +29,7 @@ export function CreateBusinessPage({ user, onUpdated }: CreateBusinessPageProps)
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white hover:opacity-90 cursor-pointer" style={{ backgroundColor: '#2563EB' }}>
+      <button type="button" onClick={() => setOpen(true)} className={className ?? 'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white hover:opacity-90 cursor-pointer'} style={{ backgroundColor: '#2563EB' }}>
         Crear página
       </button>
       <Modal isOpen={open} onClose={() => setOpen(false)} maxWidth="2xl">

@@ -102,7 +102,7 @@ export const socialApi = {
 
 export const usersApi = {
   getProfile: () => api.get<User>('/users/profile'),
-  updateProfile: (data: Partial<User>) => api.put<User>('/users/profile', data),
+  updateProfile: (data: Partial<Omit<User, 'website'>> & { website?: string | null }) => api.put<User>('/users/profile', data), // null borra el sitio web
   deleteAccount: () => api.delete('/users/me'),
 };
 
@@ -125,10 +125,10 @@ export const businessApi = {
     form.append('file', file);
     return api.post<{ aboutImages: string[] }>('/businesses/me/about-images', form, { headers: { 'Content-Type': undefined } });
   },
-  uploadItemImage: (file: File) => {
+  uploadItemImage: (file: File, type: 'products' | 'services' = 'products') => {
     const form = new FormData();
     form.append('file', file);
-    return api.post<{ url: string }>('/businesses/me/item-image', form, { headers: { 'Content-Type': undefined } });
+    return api.post<{ url: string }>('/businesses/me/item-image', form, { headers: { 'Content-Type': undefined }, params: { type } });
   },
   deleteAboutImage: (url: string) =>
     api.delete<{ aboutImages: string[] }>('/businesses/me/about-images', { params: { url } }),

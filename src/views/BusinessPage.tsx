@@ -1,5 +1,6 @@
 // Micro-sitio público de un negocio. Componente de servidor (HTML indexable). Las partes interactivas son componentes de cliente.
 import type { ComponentProps } from 'react';
+import { formatPhone } from '@/lib/phone';
 import { whatsappLink } from '@/features/business/format';
 import { AboutImagesEdit } from '@/features/business/AboutImagesEdit';
 import { BusinessContactEdit } from '@/features/business/BusinessContactEdit';
@@ -19,12 +20,16 @@ import { ServicesSection } from '@/features/business/ServicesSection';
 import { EventsCountdown } from '@/features/business/EventsCountdown';
 import { ReviewsSection } from '@/features/business/ReviewsSection';
 import { BottomBar } from '@/features/business/BottomBar';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Stat } from '@/components/ui/Stat';
 import { BUSINESS_AMENITIES } from '@/constants/business';
 import { ADDRESS_LABELS, DEFAULT_INSTAGRAM_LABEL, DEFAULT_PHONE_LABEL, DEFAULT_WEBSITE_LABEL, SITE_URL, type Business } from '@/lib/business';
 
 // Interruptor bajo el título de una pestaña. Sin 'use client': el interruptor solo aparece para el dueño.
+// Título de sección de la vista del visitante. En línea: los estilos globales de h2 pisan las clases de tamaño.
+const sectionTitle = { fontSize: '24px', lineHeight: 1.25, fontWeight: 600 } as const;
+
 function TabToolbar(props: ComponentProps<typeof TabVisibilitySwitch>) {
   return <div className="mb-5 empty:hidden"><TabVisibilitySwitch {...props} /></div>;
 }
@@ -73,19 +78,32 @@ export default function BusinessPage({ business }: { business: Business }) {
     mapUrl: business.mapUrl,
   };
 
-  const contactCard = (
-    <Card padding="sm" className="p-5 text-sm flow-root">
-      <BusinessContactEdit
-        slug={business.slug}
-        contact={{ address: business.companyAddress, addressLabel: business.addressLabel, phone: business.companyPhone, phoneLabel: business.phoneLabel, instagram: business.companyInstagram, instagramLabel: business.instagramLabel, website: business.website, websiteLabel: business.websiteLabel }}
-        className="float-right ml-3 mb-1"
-      />
+  const contactLines = (
       <div className="space-y-2">
         {business.companyAddress && <p><span className="font-semibold">{business.addressLabel ?? ADDRESS_LABELS[0]}:</span> {business.companyAddress}{business.comuna ? `, ${business.comuna}` : ''}</p>}
-        {business.companyPhone && <p><span className="font-semibold">{business.phoneLabel ?? DEFAULT_PHONE_LABEL}:</span> {business.companyPhone}</p>}
+        {business.companyPhone && <p><span className="font-semibold">{business.phoneLabel ?? DEFAULT_PHONE_LABEL}:</span> {formatPhone(business.companyPhone)}</p>}
         {instagram && <p><span className="font-semibold">{business.instagramLabel ?? DEFAULT_INSTAGRAM_LABEL}:</span> <a href={instagram} target="_blank" rel="noopener noreferrer" className="underline text-brand-blue">{instagramHandle}</a></p>}
         {business.website && <p><span className="font-semibold">{business.websiteLabel ?? DEFAULT_WEBSITE_LABEL}:</span> <a href={business.website} target="_blank" rel="noopener noreferrer" className="underline text-brand-blue">{business.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}</a></p>}
       </div>
+  );
+  const contactEditProps = { address: business.companyAddress, addressLabel: business.addressLabel, phone: business.companyPhone, phoneLabel: business.phoneLabel, instagram: business.companyInstagram, instagramLabel: business.instagramLabel, website: business.website, websiteLabel: business.websiteLabel };
+
+  // Editor: tarjeta de siempre, con el botón Editar flotante.
+  const ownerContactCard = (
+    <Card padding="sm" className="p-5 text-sm flow-root">
+      <BusinessContactEdit slug={business.slug} contact={contactEditProps} className="float-right ml-3 mb-1" />
+      {contactLines}
+    </Card>
+  );
+
+  // Visitante: tarjeta lateral con título y Cómo llegar. El dueño edita en ownerContactCard.
+  const contactCard = (
+    <Card padding="sm" className="p-5 text-sm">
+      <h3 className="font-semibold mb-3">Contacto y ubicación</h3>
+      {contactLines}
+      {mapHref && (
+        <Button href={mapHref} target="_blank" variant="dark" fullWidth className="mt-4">Cómo llegar</Button>
+      )}
     </Card>
   );
 
@@ -110,9 +128,14 @@ export default function BusinessPage({ business }: { business: Business }) {
       label: 'Contáctanos',
       content: (
             <section aria-labelledby="contactanos-titulo">
+          <h2 id="contactanos-titulo" className="sr-only">Contáctanos</h2>
+          {contactCard}
+            </section>      ),
+      ownerContent: (
+            <section aria-labelledby="contactanos-titulo">
           <h2 id="contactanos-titulo" className="text-2xl font-semibold mb-5">Contáctanos</h2>
           <ContactVisibility inAllTabs={business.contactInAllTabs} />
-          {contactCard}
+          {ownerContactCard}
             </section>      ),
     },
     {
@@ -130,6 +153,13 @@ export default function BusinessPage({ business }: { business: Business }) {
       label: 'Horario',
       content: (
             <section aria-labelledby="horario-titulo">
+          <h2 id="horario-titulo" className="sr-only">Horario</h2>
+          <div className="text-sm">
+            <BusinessHoursCard hours={business.hours} />
+          </div>
+            </section>      ),
+      ownerContent: (
+            <section aria-labelledby="horario-titulo">
           <h2 id="horario-titulo" className="text-2xl font-semibold mb-5">Horario</h2>
           <TabToolbar tab="horario" name="Horario" />
           <div className="text-sm">
@@ -141,6 +171,26 @@ export default function BusinessPage({ business }: { business: Business }) {
       id: 'nosotros',
       label: 'Nosotros',
       content: (
+            <section aria-labelledby="nosotros-titulo" className="h-full flex flex-col">
+          <h2 id="nosotros-titulo" className="mb-4" style={sectionTitle}>Nosotros</h2>
+          <Card padding="sm" className="p-4 flex-1 space-y-4">
+            <ImageCarousel images={business.aboutImages ?? []} alt={`Fotos de ${business.name}`} aspectClass="aspect-[2/1]" />
+            {paragraphs.length > 0 && (
+              <div className="space-y-3">
+                {paragraphs.map((p, i) => (
+                  <p key={i} className="text-base leading-relaxed">{p}</p>
+                ))}
+              </div>
+            )}
+            {amenities.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand-dark/60 mb-2">Lo que encontrarás</p>
+                <AmenityList amenities={amenities} />
+              </div>
+            )}
+          </Card>
+            </section>      ),
+      ownerContent: (
             <section aria-labelledby="nosotros-titulo">
           <h2 id="nosotros-titulo" className="text-2xl font-semibold mb-5">Nosotros</h2>
           <div className="relative mb-6">
@@ -163,6 +213,11 @@ export default function BusinessPage({ business }: { business: Business }) {
       id: 'resenas',
       label: 'Reseñas',
       content: (
+            <section aria-labelledby="resenas-titulo" className="h-full flex flex-col">
+          <h2 id="resenas-titulo" className="mb-4" style={sectionTitle}>Reseñas</h2>
+          <ReviewsSection slug={business.slug} reviews={business.reviews} rating={business.stats.rating} reviewCount={business.stats.reviewCount} ratingCounts={business.stats.ratingCounts} />
+            </section>      ),
+      ownerContent: (
             <section aria-labelledby="resenas-titulo">
           <h2 id="resenas-titulo" className="text-2xl font-semibold mb-5">Reseñas</h2>
           <TabToolbar tab="resenas" name="Reseñas" />
@@ -190,12 +245,12 @@ export default function BusinessPage({ business }: { business: Business }) {
             <div className={`relative w-fit ${business.logoUrl && business.coverUrl ? '-mt-[69px] md:-mt-[86px]' : ''}`}>
               {business.logoUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={business.logoUrl} alt={`Logo de ${business.name}`} className={`w-[106px] h-[106px] md:w-[141px] md:h-[141px] ${business.logoShape === 'square' ? 'rounded-2xl' : 'rounded-full'} object-cover bg-white border-2 border-white`} />
+                <img src={business.logoUrl} alt={`Logo de ${business.name}`} className={`w-[106px] h-[106px] md:w-[141px] md:h-[141px] ${business.logoShape === 'square' ? 'rounded-2xl' : 'rounded-full'} object-cover bg-white border-4 md:border-[5px] border-white shadow-md`} />
               )}
               <BusinessImageEdit slug={business.slug} kind="logo" value={business.logoUrl} logoShape={business.logoShape} className={business.logoUrl ? 'absolute z-10 left-full ml-3 bottom-2' : ''} />
             </div>
-            {/* El nombre no se muestra: queda como título para buscadores y lectores de pantalla. */}
-            <h1 className="sr-only">{business.name}</h1>
+            {/* Estilos en línea: los globales de h1 pisan las clases de tamaño. */}
+            <h1 className="break-words" style={{ fontSize: 'clamp(24px, 4vw, 32px)', lineHeight: 1.2, fontWeight: 600, color: 'inherit' }}>{business.name}</h1>
           </div>
           <dl className="mt-4 flex gap-8">
             <Stat tone={statTone} label="Valoración" value={business.stats.rating !== null ? `★ ${business.stats.rating}` : '—'} />
@@ -236,12 +291,11 @@ export default function BusinessPage({ business }: { business: Business }) {
 
       <BusinessTabs
         slug={business.slug}
+        sections={panels}
         storageKey={`tab:business:${business.slug}`}
-        defaultId="eventos"
-        panels={[...panels].sort((a, b) => a.label.localeCompare(b.label, 'es'))}
+        ownerFooter={business.contactInAllTabs ? ownerContactCard : undefined}
         hiddenTabs={business.hiddenTabs}
-        footer={business.contactInAllTabs ? contactCard : undefined}
-        footerHiddenOn="contactanos"
+        unavailableTabs={business.unavailableTabs}
       />
 
       {/* La barra de Cómo llegar y Contactar solo se muestra en producción, no en local. */}
