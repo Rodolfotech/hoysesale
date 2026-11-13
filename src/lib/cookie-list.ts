@@ -13,6 +13,15 @@ export const NECESSARY_COOKIES: StorageRow[] = [
   { name: 'hss_ev_* (almacenamiento local)', owner: 'HoySeSale', purpose: 'Copia temporal de los listados públicos de eventos para que carguen más rápido. No contiene datos personales.', duration: '10 minutos de validez' },
 ];
 
-export const OPTIONAL_COOKIES: StorageRow[] = [
+// Opcionales: cada grupo se carga solo con su consentimiento (src/lib/consent.ts).
+export const MAPS_COOKIES: StorageRow[] = [
   { name: 'Cookies de Google Maps', owner: 'Google LLC (Estados Unidos)', purpose: 'Mostrar el mapa con la ubicación en el detalle de un evento. Al cargarlo, Google recibe tu dirección IP y puede instalar cookies propias.', duration: 'La que define Google' },
+];
+
+// Google Tag Manager carga Google Analytics y Microsoft Clarity. Si se agrega otra etiqueta en GTM, se agrega aquí y en la CSP.
+export const ANALYTICS_COOKIES: StorageRow[] = [
+  { name: 'Google Tag Manager', owner: 'Google LLC (Estados Unidos)', purpose: 'Carga las herramientas de analítica de esta lista. No instala cookies propias, pero Google recibe tu dirección IP.', duration: 'No aplica' },
+  { name: '_ga y _ga_*', owner: 'Google LLC (Estados Unidos)', purpose: 'Google Analytics: un identificador aleatorio para contar visitas, páginas vistas y de dónde llegan, sin tu nombre ni tu correo.', duration: '2 años' },
+  { name: '_clck y _clsk', owner: 'Microsoft Corporation (Estados Unidos)', purpose: 'Microsoft Clarity: un identificador aleatorio y la sesión, para ver de forma agregada cómo se usa el sitio (clics, desplazamientos y movimientos del puntero).', duration: '1 año y 1 día' },
+  { name: 'CLID y MUID', owner: 'Microsoft Corporation (Estados Unidos)', purpose: 'Microsoft Clarity: reconocer el navegador entre visitas.', duration: '1 año' },
 ];

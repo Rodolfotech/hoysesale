@@ -3,14 +3,15 @@ import type { NextConfig } from 'next';
 // Sin nonces: 'unsafe-inline' es necesario para los scripts de Next y permite mantener páginas estáticas y en caché.
 // Las imágenes llegan de Supabase e Instagram (CDN con varios dominios), por eso se permite cualquier https.
 // En desarrollo no se aplica: el refresco en caliente necesita eval y websockets.
+// Analítica (solo con consentimiento): Google Tag Manager, Google Analytics y Microsoft Clarity (src/lib/analytics.ts).
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://*.clarity.ms",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://*.clarity.ms https://c.bing.com",
   'frame-src https://www.google.com', // mapa de los eventos
   "object-src 'none'",
   "base-uri 'self'",

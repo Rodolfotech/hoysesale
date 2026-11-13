@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { AccordionItem } from '@/components/ui/Accordion';
 import { LegalPage, LegalSubheading, LegalTable, legalHeading as heading, legalLink as link } from '@/components/shared/LegalPage';
 import { CookieSettingsButton } from '@/components/shared/CookieSettingsButton';
-import { NECESSARY_COOKIES, OPTIONAL_COOKIES, type StorageRow } from '@/lib/cookie-list';
+import { ANALYTICS_COOKIES, MAPS_COOKIES, NECESSARY_COOKIES, type StorageRow } from '@/lib/cookie-list';
 import { DATA_CONTROLLER, PRIVACY_POLICY_DATE, PRIVACY_POLICY_VERSION } from '@/lib/legal';
 
 const cookieRows = (rows: StorageRow[]) => rows.map((r) => [r.name, r.owner, r.purpose, r.duration]);
@@ -14,6 +14,7 @@ const DATA_ROWS = [
   ['Instagram', 'Identificador y nombre de usuario, foto de perfil, publicaciones e identificador de acceso a la API.', 'Instagram (Meta), solo si conectas tu cuenta.'],
   ['Google', 'Nombre, correo electrónico y foto de perfil.', 'Google, solo si inicias sesión con Google.'],
   ['Actividad en el sitio', 'Inscripciones a eventos, reseñas que escribes (calificación y comentario) y clics hacia Instagram asociados a tu cuenta. Las vistas de eventos se cuentan sin identificar a nadie.', 'Tu uso del sitio.'],
+  ['Analítica', 'Páginas visitadas, clics, desplazamientos y movimientos del puntero, tipo de dispositivo y navegador, ubicación aproximada y dirección IP, asociados a un identificador aleatorio y no a tu cuenta.', 'Tu navegador, solo si aceptas la analítica en el aviso de cookies.'],
   ['Datos técnicos', 'Dirección IP, que se usa para limitar intentos de inicio de sesión y registro y se guarda junto a las acciones de administración. Cookie de sesión.', 'Tu navegador.'],
 ];
 
@@ -22,6 +23,7 @@ const PURPOSE_ROWS = [
   ['Enviarte el correo para recuperar tu contraseña cuando lo pides.', 'Ejecución del contrato (art. 13, letra c).'],
   ['Conectar Instagram para importar tus publicaciones como eventos.', 'Tu consentimiento (art. 12). Puedes retirarlo desconectando Instagram desde tu perfil.'],
   ['Mostrar mapas de Google Maps en el detalle de los eventos.', 'Tu consentimiento (art. 12), que se pide en el aviso de cookies.'],
+  ['Medir cómo se usa el sitio para mejorarlo, con Google Analytics y Microsoft Clarity, cargados por Google Tag Manager.', 'Tu consentimiento (art. 12), que se pide en el aviso de cookies. Puedes retirarlo en Configurar cookies.'],
   ['Proteger el servicio y las cuentas: limitar intentos por dirección IP y registrar acciones de administración.', 'Interés legítimo (art. 13, letra d): evitar accesos indebidos, fraudes y abusos.'],
   ['Responder requerimientos de autoridades o cumplir otras obligaciones.', 'Obligación legal (art. 13, letra b).'],
 ];
@@ -30,7 +32,8 @@ const RECIPIENT_ROWS = [
   ['Vercel Inc.', 'Alojamiento del sitio y de su servidor.', 'Estados Unidos'],
   ['Supabase Inc.', 'Base de datos y almacenamiento de imágenes.', 'Estados Unidos'],
   ['Meta Platforms, Inc.', 'Conexión con Instagram, si la activas.', 'Estados Unidos'],
-  ['Google LLC', 'Inicio de sesión con Google y mapas, si los usas.', 'Estados Unidos'],
+  ['Google LLC', 'Inicio de sesión con Google y mapas, si los usas. Analítica con Google Tag Manager y Google Analytics, si la aceptas.', 'Estados Unidos'],
+  ['Microsoft Corporation', 'Analítica de uso con Microsoft Clarity, si la aceptas.', 'Estados Unidos'],
   ['Proveedor de correo electrónico', 'Envío de correos de recuperación de contraseña.', 'Según el proveedor'],
 ];
 
@@ -38,6 +41,7 @@ const RETENTION_ROWS = [
   ['Cuenta, datos del negocio y contenido publicado', 'Mientras tu cuenta exista. Al eliminarla se borran de inmediato; el detalle está en la página Eliminar datos.'],
   ['Conexión con Instagram', 'Hasta que la desconectes o elimines tu cuenta.'],
   ['Cookie de sesión', '7 días o hasta que cierres sesión.'],
+  ['Datos de analítica', 'Las cookies duran hasta 2 años (Google Analytics) y 1 año (Clarity). Cada proveedor guarda los datos según su configuración: en Google Analytics, 2 meses por defecto; en Clarity, las sesiones grabadas 30 días y los datos agregados hasta 13 meses.'],
   ['Enlace para recuperar la contraseña', '1 hora.'],
   ['Contadores de intentos', 'Unos minutos. La dirección IP se guarda transformada (cifrado de un solo sentido) y el contador se borra al vencer.'],
   ['Registro de acciones de administración', 'Mientras sea necesario para investigar incidentes de seguridad.'],
@@ -184,16 +188,23 @@ const SECTIONS: AccordionItem[] = [
     title: 'Cookies',
     content: (
       <>
-        <p>Las cookies y el almacenamiento local son pequeños datos que el sitio guarda en tu navegador. No usamos cookies de publicidad, de analítica ni para crear perfiles de navegación.</p>
+        <p>Las cookies y el almacenamiento local son pequeños datos que el sitio guarda en tu navegador. Usamos cookies necesarias y, solo si las aceptas, cookies de mapas y de analítica. No usamos cookies de publicidad ni compartimos datos para mostrarte anuncios.</p>
 
         <LegalSubheading>Cookies necesarias</LegalSubheading>
         <p className="mt-1">Son indispensables para prestar el servicio que solicitas, como iniciar sesión o no perder un formulario a medio llenar. Están siempre activas y no requieren tu consentimiento (art. 13, letra c).</p>
         <LegalTable head={['Nombre', 'Responsable', 'Para qué sirve', 'Duración']} rows={cookieRows(NECESSARY_COOKIES)} />
 
         <LegalSubheading>Cookies de terceros opcionales</LegalSubheading>
-        <p className="mt-1">Solo se cargan si das tu consentimiento previo, libre, informado y específico (art. 12). Si las rechazas, el sitio funciona igual: en lugar del mapa verás un aviso y un enlace para abrir la ubicación en Google Maps por tu cuenta.</p>
-        <LegalTable head={['Nombre', 'Responsable', 'Para qué sirve', 'Duración']} rows={cookieRows(OPTIONAL_COOKIES)} />
-        <p className="mt-3">Google LLC trata estos datos en Estados Unidos. Puedes revisar cómo los usa en su política de privacidad: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="underline" style={link}>policies.google.com/privacy</a>.</p>
+        <p className="mt-1">Solo se cargan si das tu consentimiento previo, libre, informado y específico (art. 12), y cada grupo se acepta por separado. Si las rechazas, el sitio funciona igual.</p>
+
+        <p className="mt-3 font-medium">Mapas</p>
+        <p className="mt-1">Si no los aceptas, en lugar del mapa verás un aviso y un enlace para abrir la ubicación en Google Maps por tu cuenta.</p>
+        <LegalTable head={['Nombre', 'Responsable', 'Para qué sirve', 'Duración']} rows={cookieRows(MAPS_COOKIES)} />
+
+        <p className="mt-3 font-medium">Analítica</p>
+        <p className="mt-1">Nos dice qué páginas se visitan y cómo se usa el sitio, para mejorarlo. Google Tag Manager carga Google Analytics y Microsoft Clarity solo después de que aceptas; no se cargan en la primera visita ni si rechazas. Clarity registra clics, desplazamientos y movimientos del puntero para mostrarnos cómo se navega. Si retiras el consentimiento, borramos sus cookies de este sitio y dejamos de cargarlos.</p>
+        <LegalTable head={['Nombre', 'Responsable', 'Para qué sirve', 'Duración']} rows={cookieRows(ANALYTICS_COOKIES)} />
+        <p className="mt-3">Google LLC y Microsoft Corporation tratan estos datos en Estados Unidos. Puedes revisar cómo los usan en sus políticas de privacidad: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="underline" style={link}>policies.google.com/privacy</a> y <a href="https://privacy.microsoft.com/es-es/privacystatement" target="_blank" rel="noopener noreferrer" className="underline" style={link}>privacy.microsoft.com</a>.</p>
 
         <LegalSubheading>Contenido externo sin cookies</LegalSubheading>
         <p className="mt-1">Las imágenes de los eventos pueden cargarse desde Instagram (Meta) o desde nuestro almacenamiento en Supabase. Esos servicios reciben tu dirección IP como en cualquier visita a un sitio web, pero no instalamos cookies suyas.</p>

@@ -1,11 +1,11 @@
 # Plan de seguridad y escalabilidad — HoySeSale.cl
 
-Estado de la seguridad y la escalabilidad del proyecto. Cada tarea pendiente tiene un criterio de éxito verificable. Actualizado el 11-11-2026.
+Estado de la seguridad y la escalabilidad del proyecto. Cada tarea pendiente tiene un criterio de éxito verificable. Actualizado el 13-11-2026.
 
 ## Estado actual
 
 - **Producción:** esquema de base de datos al día. El banner de cookies y las políticas nuevas ya se ven en `www.hoysesale.cl`; falta confirmar en Vercel el commit del deployment.
-- **Sin commit en `main`:** revisión de origen del código de Google, corrección del registro con Google y las validaciones nuevas del perfil (RUT de empresa, categoría, giro y teléfono).
+- **Sin commit en `main`:** la analítica con Google Tag Manager (carga con consentimiento y CSP nueva). Lo anterior se subió con los Pull Requests #12 y #13.
 - **Próximo paso:** rotar los secretos y subir lo pendiente con una rama y Pull Request.
 - **Protección de datos (Ley 21.719):** ver `plan.md`.
 - **Lecciones aplicadas:** ver "Errores que ya cometimos" en `README.md`.
@@ -18,7 +18,10 @@ Estado de la seguridad y la escalabilidad del proyecto. Cada tarea pendiente tie
 | Cabeceras de seguridad | CSP, HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` y `Permissions-Policy`. Sin bloqueos en páginas principales con dos instancias de producción local |
 | Límite compartido | Login, registro, revisión de correo y contraseña, en Postgres. Si falla, deja pasar. Comprobado entre dos instancias |
 | Login justo con redes compartidas | Límite estricto por IP y correo: 20 personas tras una IP no se bloquearon |
-| Pestañas ocultas | Filtradas en el servidor, en HTML y API |
+| Pestañas ocultas | Filtradas en el servidor, en HTML y API. Las que la categoría no tiene no se envían a nadie, tampoco al dueño. Ver como visitante solo cambia lo que ve el navegador del dueño |
+| Publicar eventos por categoría | El servidor responde 403 si la categoría no es de Turismo o Panoramas, o si el giro es de comercio funcional |
+| Imágenes de servicios | WEBP, JPG o PNG hasta 2 MB, con revisión del contenido real; productos siguen solo en WEBP. Nombre (60), descripción (200) y etiquetas (8) validados en el servidor |
+| Reseñas | El conteo por estrella se calcula en el servidor; el dueño no puede reseñar su propio negocio |
 | Pruebas de autorización | En `pnpm test`: todas las rutas responden 401 sin sesión, salvo las declaradas públicas |
 | Asistentes de eventos | La ruta era pública. Ahora solo el dueño del evento o un administrador |
 | Token de recuperación | Ya no sirve como sesión |
@@ -29,6 +32,7 @@ Estado de la seguridad y la escalabilidad del proyecto. Cada tarea pendiente tie
 | Datos obligatorios en el servidor | RUT con dígito verificador (el de la empresa desde 50.000.000), categoría y giro solo de sus listas, teléfono `+569` y 8 dígitos, datos de empresa y administrador que no se pueden vaciar, comuna de La Araucanía, eventos solo en la comuna de la empresa |
 | Imagen de eventos | Solo URL `http` o `https`: rechaza `javascript:` |
 | CSP para el mapa | `frame-src` limitado a `https://www.google.com`. Probado en un build de producción local |
+| CSP para la analítica | `script-src` y `connect-src` permiten solo Google Tag Manager, Google Analytics y Clarity. GTM se carga únicamente con consentimiento. Sin avisos de CSP en un build de producción local |
 | Código de Google entre ventanas | Solo se acepta desde el mismo origen y una vez; la ventana de Google ya no lo envía con `'*'` |
 | URL única del negocio | Si dos cuentas guardan la misma URL a la vez, la segunda recibe 409 en vez de un error 500 |
 | Supresión al desconectar Instagram | También se borran el nombre de usuario y la foto, igual que la eliminación pedida desde Meta |

@@ -56,11 +56,13 @@ src/
 │   ├── business/             # Micro-sitio
 │   │                         # Formulario: BusinessForm, OfferItemForm, OfferExtras, AboutImages,
 │   │                         #   BusinessScheduleForm, BusinessImagePicker, BusinessDescriptionField
-│   │                         # Página pública: BusinessTabs, ProductsSection, ServicesSection, EventsCountdown,
+│   │                         # Página pública: BusinessTabs (elige editor o visitante), BusinessSections (visitante, una
+│   │                         #   página), AboutText (Ver más), ProductsSection, ServicesSection, EventsCountdown,
 │   │                         #   ReviewsSection, BusinessHoursCard, BusinessStatusBadge, AmenityList, BottomBar
 │   │                         # Edición en la página: BusinessOwnerBar, BusinessImageEdit, BusinessDescriptionEdit,
 │   │                         #   BusinessHoursEdit, BusinessContactEdit, AboutImagesEdit, OfferItemActions,
-│   │                         #   TabVisibilitySwitch, ContactVisibility
+│   │                         #   TabVisibilitySwitch, ContactVisibility, OwnerPreview (Ver como visitante),
+│   │                         #   ServiceFields y ServiceImageDrop (formulario de servicio)
 │   │                         # Lógica: useIsOwner, useAboutImages, offer.ts, format.ts
 │   ├── events/               # Detalle de eventos, EventMap (Google Maps con consentimiento)
 │   ├── auth/                 # Botón de Google y googleMessage.ts (código de Google: mismo origen y un solo uso)
@@ -68,7 +70,8 @@ src/
 ├── hooks/                    # usePersistentState, usePagedItems, useFileDrop, useRefresh, useCountdown, useConsent
 ├── lib/                      # Código compartido cliente/servidor (sin 'use client'):
 │                             # hours.ts, media-limits.ts, api-error.ts, business.ts (tipos, listas y redactHiddenTabs),
-│                             # rut.ts (validar y formatear RUT), event-price.ts (valor de entrada), map-embed.ts,
+│                             # rut.ts (validar y formatear RUT), phone.ts (formatPhone), business-rules.ts (tipo de
+│                             # categoría, pestañas y quién publica eventos), event-price.ts (valor de entrada), map-embed.ts,
 │                             # consent.ts y cookie-list.ts (cookies), legal.ts (responsable y versiones de las políticas)
 ├── constants/                # Comunas, categorías de la empresa (agrupadas), giros del SII (giros.ts), comodidades
 ├── api/                      # Cliente axios (baseURL /api)
@@ -140,10 +143,10 @@ Cada negocio tiene su página en `/<slug>`. La pestaña del navegador muestra el
 
 | Pestaña | Contenido |
 |---|---|
-| Contáctanos | Dirección, teléfono, Instagram (`@usuario`) y sitio web (dominio), cada uno con su texto elegido |
+| Contáctanos | Dirección, teléfono, Instagram (`@usuario`) y sitio web (dominio), cada uno con su texto elegido. El visitante lo ve como tarjeta "Contacto y ubicación" con Cómo llegar |
 | Eventos | Eventos vigentes con cuenta regresiva y Reservar cupo |
 | Horario | Estado actual y horario de la semana |
-| Nosotros | Carrusel de fotos y descripción (máximo 2000 caracteres) con comodidades |
+| Nosotros | Carrusel de fotos y descripción (máximo 2000 caracteres) con comodidades. El visitante ve unas 4 líneas y Ver más; sin fotos ni texto, "Aún no hay información del negocio" |
 | Productos | Tarjetas con imagen, precio y + Agregar por WhatsApp; 6 por página |
 | Reseñas | Valoración y comentarios. El visitante ve el promedio, una barra por cada estrella (`stats.ratingCounts`, contado en el servidor) y Escribir una reseña, que abre el formulario o lleva a iniciar sesión |
 | Servicios | Tarjetas con imagen, etiquetas y Cotizar por WhatsApp; 6 por página, con la paginación siempre visible |
@@ -153,14 +156,13 @@ Cada negocio tiene su página en `/<slug>`. La pestaña del navegador muestra el
 Solo los ve el dueño (`useIsOwner`). El servidor valida cada cambio por separado.
 
 - **Ver como visitante** (`OwnerPreview`): botón junto a Encuéntranos. Muestra la página como la ve un visitante (diseño de una página, sin controles y sin las pestañas ocultas) y un aviso fijo con Volver a editar. Solo cambia lo que ve el navegador; mientras dura, `useIsOwner` devuelve `false`. Para los controles nuevos usa `useIsOwner`, no compares la sesión a mano, o seguirán visibles en la vista previa.
-
 - **Logo:** reemplazar la imagen y elegir marco redondo o cuadrado. El marco en uso se ve opaco.
 - **Portada:** reemplazar la imagen. Logo y portada aceptan arrastrar archivos.
 - **Fotos de Nosotros:** agregar, quitar, arrastrar archivos y reordenar. Se publican con Guardar.
 - **Descripción, Horario y Contacto:** cada uno con su Editar y su ventana.
 - **Productos y servicios:** Editar y Eliminar en cada tarjeta. Eliminar pide confirmación. Agregar producto y Agregar servicio abren su formulario con Eventos y Comodidades (`OfferExtras`); allí cada comodidad se guarda al marcarla.
 - **Eventos:** Ir a publicaciones activas (`/create-event?tab=activas`).
-- **Interruptores:** Ocultar pestaña en cada pestaña que su categoría tiene (Contáctanos, Eventos, Horario, Productos, Reseñas o Servicios). Nosotros siempre queda visible. En Contáctanos, Mostrar en todas las pestañas pone los datos de contacto debajo de cada una.
+- **Interruptores:** Ocultar pestaña en cada pestaña que su categoría tiene (Contáctanos, Eventos, Horario, Productos, Reseñas o Servicios). Nosotros siempre queda visible. En Contáctanos, Mostrar en todas las pestañas pone los datos de contacto debajo de cada una (solo en el editor).
 
 ### Textos de contacto
 
@@ -190,8 +192,9 @@ El dueño también puede eliminar la página desde el micro-sitio. Se borra solo
 La Ley N° 21.719 entra en vigencia el 1 de diciembre de 2026. Lo pendiente para cumplirla está en `plan.md`.
 
 - **Banner de cookies** (`CookieBanner`): Aceptar, Rechazar y Configurar, con el mismo peso. Nada opcional se carga antes de decidir. La elección se guarda en `localStorage` (`hss_consent`) con versión y fecha, y se vuelve a preguntar si cambia `COOKIE_POLICY_VERSION` (`src/lib/consent.ts`) o pasan 12 meses.
-- **Cookies opcionales:** solo Google Maps. Las cookies que existen están en `src/lib/cookie-list.ts`, que usan el panel del banner y la sección Cookies de la política. Un servicio externo nuevo que instale cookies debe pasar por el consentimiento, agregarse a esa lista y a la CSP.
+- **Cookies opcionales:** dos grupos que se aceptan por separado: Mapas (Google Maps) y Analítica (Google Tag Manager, que carga Google Analytics y Microsoft Clarity). Las cookies que existen están en `src/lib/cookie-list.ts`, que usan el panel del banner y la sección Cookies de la política. Un servicio externo nuevo que instale cookies debe pasar por el consentimiento, agregarse a esa lista y a la CSP.
 - **Retirar el consentimiento:** "Configurar cookies" en el pie de cada página y en la política.
+- **Analítica** (`src/components/shared/Analytics.tsx`, `src/lib/analytics.ts`): contenedor `GTM-5FGKKZNT` (se puede cambiar con `NEXT_PUBLIC_GTM_ID`). Se carga solo en producción y solo si el visitante aceptó Analítica, con el modo de consentimiento de Google (analítica sí, publicidad nunca). Si retira el consentimiento, se avisa a Google, se borran las cookies `_ga*`, `_clck` y `_clsk` del sitio y la página se recarga sin GTM. Google Analytics y Clarity se configuran como etiquetas en el panel de GTM: cada etiqueta nueva necesita su dominio en la CSP, sus cookies en `cookie-list.ts` y la Política de privacidad actualizada.
 - **Páginas legales** (`LegalPage`, acordeón con índice y anclas `#seccion`): `/privacidad` (13 secciones, incluida `#cookies`), `/terminosdelservicio` y `/eliminacion-datos`. Cada tema está en una sola página y las demás enlazan a ella. `/politica-cookies` redirige a `/privacidad#cookies`.
 - **Responsable de los datos:** `src/lib/legal.ts`. Faltan razón social, RUT, representante legal y domicilio; mientras estén en `null` no se muestran.
 - **Pie de página:** Política de privacidad y Configurar cookies en la franja inferior; Términos y Eliminar datos en la columna Legal.
@@ -273,10 +276,13 @@ Un solo proyecto con Root Directory en la raíz y framework Next.js. Variables d
 18. **Textos legales que prometen lo que el código no hace.** Eliminar datos decía que desconectar Instagram borraba el usuario y la foto, y no era así. Antes de publicar un texto legal, verifica cada afirmación contra el código.
 19. **Bases local y de producción distintas.** Un negocio creado en `localhost:5173` no existe en `www.hoysesale.cl`. Para ver qué hay en producción, usa `GET /api/businesses`.
 20. **Validación que impide avanzar.** Exigir todos los datos obligatorios para guardar dejaba al usuario sin poder guardar nada. Guarda lo completo, valida lo escrito y muestra lo que falta.
+21. **Rediseño del visitante que cambia el editor.** El nuevo diseño de una página se aplicó también al dueño y hubo que separarlo. Cambia `BusinessSections` (visitante) sin tocar `SectionTabs` (editor), salvo que se pida.
+22. **Contar sobre datos recortados.** El servidor envía solo las 30 reseñas más recientes; contar estrellas con esa lista da barras falsas. Los totales se calculan en el servidor (`stats.ratingCounts`).
+23. **Comparar la sesión a mano.** Un control que revisa `user.slug === slug` sigue visible en Ver como visitante. Usa `useIsOwner`.
 
 ## Pruebas
 
-- `pnpm test`: 122 pruebas. Cubren horarios, utilidades, filtrado de pestañas ocultas, permisos, RUT (incluido el rango de empresa y el formato al escribir), consentimiento de cookies, valor de entrada, URL del mapa y reglas por categoría.
+- `pnpm test`: 124 pruebas. Cubren horarios, utilidades, filtrado de pestañas ocultas, permisos, RUT (incluido el rango de empresa y el formato al escribir), consentimiento de cookies (mapas y analítica por separado), valor de entrada, URL del mapa y reglas por categoría.
 - `src/app/api/authorization.test.ts` recorre todas las rutas de la API. Una ruta nueva debe responder 401 sin sesión, salvo que se declare pública en esa prueba. También comprueba el panel de administración, los datos de otros usuarios y el token de recuperación de contraseña.
 - Las pruebas de navegador con Playwright se hicieron fuera del repositorio. Agregarlas sigue pendiente.
 
@@ -291,11 +297,11 @@ Un solo proyecto con Root Directory en la raíz y framework Next.js. Variables d
 ## Seguridad en producción
 
 - **Sesión:** cookie `access_token` con `HttpOnly`, `Secure` en producción y `SameSite=Lax`. Un token de recuperación de contraseña no sirve como sesión.
-- **Cabeceras:** `next.config.ts` define CSP, HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` y `Permissions-Policy`. Solo aplican en producción. CSP usa `'unsafe-inline'` porque la app no usa nonces, permite imágenes de cualquier dominio `https` por Supabase e Instagram, y marcos (`frame-src`) solo de `https://www.google.com` para el mapa de eventos.
+- **Cabeceras:** `next.config.ts` define CSP (con los dominios de Google Tag Manager, Google Analytics y Clarity para la analítica), HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` y `Permissions-Policy`. Solo aplican en producción. CSP usa `'unsafe-inline'` porque la app no usa nonces, permite imágenes de cualquier dominio `https` por Supabase e Instagram, y marcos (`frame-src`) solo de `https://www.google.com` para el mapa de eventos.
 - **Intentos:** login, registro, revisión de correo y contraseña usan `sharedRateLimit`, con contadores en `rate_limits`, compartidos entre instancias. Si esa tabla falla, deja pasar y queda el límite en memoria: un problema interno no debe bloquear usuarios. El resto de la API tiene 300 peticiones por minuto por IP, en memoria de cada instancia.
 - **Pestañas ocultas:** `getBusinessPageFor` quita su contenido en el servidor. Los visitantes no lo reciben ni en el HTML ni en la API, y nadie recibe el de las pestañas que su categoría no tiene. El giro se usa para calcularlas, pero no se publica. El contacto se conserva si está activo Mostrar en todas las pestañas.
 - **Permisos:** cada ruta valida la sesión y la propiedad del dato. La lista de asistentes solo la ve el dueño del evento o un administrador. El reordenamiento de fotos solo acepta las del propio negocio.
-- **Imágenes:** el servidor revisa el contenido real del archivo en logo, portada y productos. SVG no se acepta porque puede llevar código.
+- **Imágenes:** el servidor revisa el contenido real del archivo en logo, portada, productos y servicios (servicios aceptan WEBP, JPG o PNG; productos solo WEBP). SVG no se acepta porque puede llevar código.
 - **Datos del evento:** la URL de la imagen solo acepta `http` o `https` (evita `javascript:`).
 - **Inicio de sesión con Google:** el código se acepta solo desde el mismo origen y una vez.
 - **Dependencias:** `pnpm audit --prod` sin vulnerabilidades conocidas al 30-10-2026.

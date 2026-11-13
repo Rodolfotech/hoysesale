@@ -35,10 +35,11 @@ Lee `README.md` antes de cambiar nada. Este archivo resume lo que un agente debe
 - **Quién publica eventos:** solo las categorías de Turismo y de Panoramas (`EVENT_CATEGORIES`), sin giro de comercio funcional (servicios de barrio y ferreterías). El servidor lo aplica al crear eventos, y el botón Publicar evento del navbar aparece deshabilitado para las demás.
 - **Pestañas del micro-sitio:** las define la categoría y se calculan al mostrar la página (`availableTabs`/`unavailableTabs`), así que siguen a la categoría si cambia. Servicios: Contáctanos, Horario, Nosotros, Reseñas y Servicios; productos: cambia Servicios por Productos; eventos: cambia Servicios por Eventos; sin categoría válida: Contáctanos, Horario, Nosotros y Reseñas. Las demás no las ve nadie, **tampoco el dueño**, y su contenido no se envía. El dueño ve las mismas pestañas que el visitante, las edita y puede ocultarlas; las que oculta las sigue viendo para volver a mostrarlas. El visitante ve las secciones en una sola página (`BusinessSections`); el dueño edita en pestañas (`SectionTabs`). Un cambio de diseño para el visitante no debe tocar la vista del editor.
 - **Páginas legales:** usa `LegalPage` y deja cada tema en una sola página; las demás enlazan con `#seccion`. Verifica cada afirmación contra el código antes de escribirla.
-- **Cookies y servicios externos:** lo que instale cookies de terceros se carga solo con consentimiento (`useConsent`), se agrega a `src/lib/cookie-list.ts` y a la CSP de `next.config.ts`.
+- **Cookies y servicios externos:** lo que instale cookies de terceros se carga solo con consentimiento (`useConsent`), se agrega a `src/lib/cookie-list.ts` y a la CSP de `next.config.ts`. Una etiqueta nueva en Google Tag Manager cuenta como servicio externo: actualiza la lista, la CSP y la Política de privacidad (subiendo su versión).
 - **Después de cambios:** corre `pnpm exec tsc --noEmit`, `pnpm test` y `pnpm build`. Tras un build o un cambio de esquema reinicia `pnpm dev`; si la página se recarga sola, borra `.next` antes. Si el usuario tiene `pnpm dev` corriendo, haz el build en una copia para no tocar su `.next`, y prueba reglas del servidor en un build aparte (`next start -p 5199`): `pnpm dev` a veces no recarga el código del servidor.
 - **Rutas de API:** toda ruta nueva exige sesión. Si debe ser pública, decláralo en `src/app/api/authorization.test.ts`.
 - **Datos privados:** se filtran en el servidor. No basta con ocultarlos en el cliente.
+- **Totales:** lo que se cuenta sobre listas recortadas (reseñas: solo 30) se calcula en el servidor, como `stats.ratingCounts`.
 - **Dueño:** usa `useIsOwner` para mostrar controles (así se ocultan en Ver como visitante); el servidor debe validar igual cada cambio.
 
 ## Qué no hacer
@@ -51,11 +52,11 @@ Lee `README.md` antes de cambiar nada. Este archivo resume lo que un agente debe
 
 ## Dónde está cada cosa
 
-- Pantallas públicas: `src/views/BusinessPage.tsx`, `src/app/(main)/`.
+- Pantallas públicas: `src/views/BusinessPage.tsx`, `src/app/(main)/`. Vista del visitante: `BusinessSections` (orden de pestañas en `TAB_ORDER`), `AboutText`, `ReviewsSection`. Ver como visitante: `OwnerPreview`.
 - Formulario del negocio: `src/features/business/BusinessForm.tsx` (URL, sitio web y botones de la barra).
 - Edición desde la página: `src/features/business/*Edit.tsx`, `OfferItemActions`, `TabVisibilitySwitch`, `ContactVisibility`. Disposición: `BusinessTabs` elige `SectionTabs` (dueño) o `BusinessSections` (visitante).
 - Perfil: `src/views/Profile.tsx`, `src/components/ui/ProfileField.tsx` (select agrupado y teléfono `+569`), `src/features/profile/CompleteProfileModal.tsx`, `src/lib/rut.ts`.
-- Privacidad y cookies: `src/views/PrivacyPolicy.tsx`, `TermsOfService.tsx`, `DataDeletion.tsx`, `src/components/shared/CookieBanner.tsx`, `src/lib/consent.ts`, `src/lib/cookie-list.ts`, `src/lib/legal.ts`.
+- Privacidad y cookies: `src/views/PrivacyPolicy.tsx`, `TermsOfService.tsx`, `DataDeletion.tsx`, `src/components/shared/CookieBanner.tsx`, `src/lib/consent.ts`, `src/lib/cookie-list.ts`, `src/lib/legal.ts`. Analítica: `src/components/shared/Analytics.tsx` y `src/lib/analytics.ts` (Google Tag Manager con consentimiento).
 - Inicio de sesión con Google: `src/views/Login.tsx`, `Register.tsx`, `GoogleCallback.tsx`, `src/features/auth/googleMessage.ts`.
 - API: `src/app/api/` y lógica en `src/server/services/`. Límites: `src/server/rate-limit.ts`.
 - Base de datos y seguridad: secciones finales de `README.md`.
