@@ -174,3 +174,18 @@ textarea.profile-input::placeholder {
   background: var(--color-neon-purple);
   border-radius: 3px;
 }
+
+/* Panel de administración: sin barra de desplazamiento visible (se sigue pudiendo desplazar). */
+html.hide-scrollbar {
+  scrollbar-width: none;
+}
+
+html.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Campo obligatorio sin completar al intentar publicar. */
+.light-form[aria-invalid='true'],
+.light-form[aria-invalid='true']:focus {
+  border-color: #dc2626 !important;
+}

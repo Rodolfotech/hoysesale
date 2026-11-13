@@ -1,4 +1,4 @@
-// Google Tag Manager. El contenedor carga Google Analytics y Microsoft Clarity (se configuran en el panel de GTM).
+// Google Tag Manager. El contenedor carga Google Analytics 4 (G-V0KEF05R6C) y Microsoft Clarity (zd2hmz2scd), configurados en el panel de GTM.
 // Cada etiqueta nueva en GTM necesita su dominio en la CSP (next.config.ts) y sus cookies en src/lib/cookie-list.ts.
 export const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID || 'GTM-5FGKKZNT';
 export const GTM_SRC = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(GTM_ID)}`;

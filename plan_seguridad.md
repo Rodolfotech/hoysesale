@@ -32,6 +32,7 @@ Estado de la seguridad y la escalabilidad del proyecto. Cada tarea pendiente tie
 | Datos obligatorios en el servidor | RUT con dígito verificador (el de la empresa desde 50.000.000), categoría y giro solo de sus listas, teléfono `+569` y 8 dígitos, datos de empresa y administrador que no se pueden vaciar, comuna de La Araucanía, eventos solo en la comuna de la empresa |
 | Imagen de eventos | Solo URL `http` o `https`: rechaza `javascript:` |
 | CSP para el mapa | `frame-src` limitado a `https://www.google.com`. Probado en un build de producción local |
+| Panel de administración al cerrar sesión | Los datos cargados (correos y cifras) seguían a la vista hasta recargar; ahora se borran y vuelve el formulario. La API ya respondía 401 |
 | CSP para la analítica | `script-src` y `connect-src` permiten solo Google Tag Manager, Google Analytics y Clarity. GTM se carga únicamente con consentimiento. Sin avisos de CSP en un build de producción local |
 | Código de Google entre ventanas | Solo se acepta desde el mismo origen y una vez; la ventana de Google ya no lo envía con `'*'` |
 | URL única del negocio | Si dos cuentas guardan la misma URL a la vez, la segunda recibe 409 en vez de un error 500 |
@@ -111,6 +112,11 @@ Estado de la seguridad y la escalabilidad del proyecto. Cada tarea pendiente tie
 
 4. **Revisar las advertencias de lint y los efectos justificados.**
    *Criterio:* `pnpm lint` sin advertencias.
+
+## Pendientes del panel de administración
+
+- **Cuenta genérica `admin@eventos.cl` en producción con rol ADMIN.** Quitarle el rol (`update users set role = 'USER' where email = 'admin@eventos.cl'`) una vez que la cuenta real del dueño entre al panel. *Criterio:* `select email from users where role = 'ADMIN'` devuelve solo cuentas personales.
+- **`isActive` no bloquea el inicio de sesión.** La columna existe pero el login no la revisa, así que no sirve para suspender cuentas. *Criterio:* una cuenta con `isActive = false` recibe 403 al iniciar sesión y su sesión deja de valer.
 
 ## Orden sugerido
 

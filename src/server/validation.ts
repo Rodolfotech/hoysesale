@@ -1,4 +1,5 @@
 import { ADDRESS_LABELS, BUSINESS_DESCRIPTION_MAX, HIDEABLE_TABS, INSTAGRAM_LABELS, LOGO_SHAPES, PHONE_LABELS, SERVICE_TAGS_MAX, SERVICE_TAG_MAX_LENGTH, WEBSITE_LABELS } from '@/lib/business';
+import { VISIT_NOTE_IDS } from '@/lib/business-rules';
 import { z } from 'zod';
 import { COMUNAS } from '@/constants/comunas';
 import { BUSINESS_AMENITIES, BUSINESS_CATEGORIES } from '@/constants/business';
@@ -138,7 +139,11 @@ export const CreateEventSchema = z.object({
   entryType: z.enum(ENTRY_TYPES, { message: 'Tipo de entrada no válido' }).nullish(),
   audience: z.enum(AUDIENCES, { message: 'Público no válido' }).nullish(),
   indoor: z.boolean().nullish(),
-  amenities: z.array(z.string()).nullish(),
+  amenities: z.array(z.enum(VISIT_NOTE_IDS)).max(VISIT_NOTE_IDS.length).nullish(), // avisos para la visita (business-rules.ts)
+  yearRound: z.boolean().optional(), // experiencia todo el año (events.ts limita quién y por cuánto tiempo)
+  featured: z.boolean().optional(), // Eventos destacados (por defecto sí, si la empresa puede)
+  hoySeSale: z.boolean().optional(), // Hoy se sale
+  news: z.boolean().optional(), // Lo nuevo en la región
 });
 
 // Solo los campos que el organizador puede editar. Nunca ownerId, socialFeed ni lastSync.
@@ -157,7 +162,11 @@ export const UpdateEventSchema = z.object({
   entryType: z.enum(ENTRY_TYPES, { message: 'Tipo de entrada no válido' }).nullish(),
   audience: z.enum(AUDIENCES, { message: 'Público no válido' }).nullish(),
   indoor: z.boolean().nullish(),
-  amenities: z.array(z.string()).nullish(),
+  amenities: z.array(z.enum(VISIT_NOTE_IDS)).max(VISIT_NOTE_IDS.length).nullish(), // avisos para la visita (business-rules.ts)
+  featured: z.boolean().optional(),
+  hoySeSale: z.boolean().optional(),
+  yearRound: z.boolean().optional(),
+  news: z.boolean().optional(), // quién puede marcar cada una: allowedPlacements (business-rules.ts)
 });
 
 export const InteractionSchema = z.object({

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { eventsApi } from '../api';
+import { eventsApi, homeApi } from '../api';
 import { getCached, setCached } from '../api/eventsCache';
 import { HeroSearch } from '../features/events/HeroSearch';
 import { EventsCarouselGrid } from '../features/events/EventsCarouselGrid';
@@ -9,10 +9,13 @@ import { CategoryGrid } from '../features/events/CategoryGrid';
 import { ComunaGrid } from '../features/events/ComunaGrid';
 import { UpcomingEventsCarousel } from '../features/events/UpcomingEventsCarousel';
 import { OrganizerCTA } from '../features/events/OrganizerCTA';
+import { OutingsSection, ExperiencesSection, NewsSection } from '../features/home/HomeSections';
+import type { HomeSections } from '@/lib/home';
 import type { Event } from '../types';
 
-const FEATURED_PARAMS = { limit: 100, dateFrom: new Date().toISOString().split('T')[0] };
-const UPCOMING_PARAMS = { limit: 100 };
+// Destacados y próximos: solo eventos con fecha (las experiencias todo el año tienen su propia sección).
+const FEATURED_PARAMS = { type: 'destacado' as const, limit: 100, dateFrom: new Date().toISOString().split('T')[0] };
+const UPCOMING_PARAMS = { type: 'destacado' as const, limit: 100 };
 
 export default function Home() {
   const [featured, setFeatured] = useState<Event[]>(() => getCached<Event[]>(FEATURED_PARAMS) ?? []);
@@ -45,6 +48,12 @@ export default function Home() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Hoy se sale, Experiencias y Novedades: cada sección se muestra solo si tiene publicaciones.
+  const [sections, setSections] = useState<HomeSections | null>(null);
+  useEffect(() => {
+    homeApi.sections().then((res) => setSections(res.data)).catch(() => {});
+  }, []);
+
   const showSkeletons = loading && featured.length === 0;
 
   return (
@@ -70,6 +79,14 @@ export default function Home() {
           </button>
         </div>
       </section>
+
+      {sections && (
+        <>
+          <OutingsSection events={sections.outings} />
+          <ExperiencesSection events={sections.experiences} />
+          <NewsSection items={sections.news} />
+        </>
+      )}
 
       <div id="categorias"><CategoryGrid /></div>
       <div id="comunas"><ComunaGrid /></div>

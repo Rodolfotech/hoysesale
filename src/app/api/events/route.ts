@@ -9,7 +9,9 @@ export const GET = route(async (req) => {
   const timeSlot = p.get('timeSlot');
   const audience = p.get('audience');
   const indoor = p.get('indoor');
+  const type = p.get('type'); // destacado | todo-el-ano
   return listEvents(p.get('city') ?? undefined, parseIntOr(p.get('page'), undefined), parseIntOr(p.get('limit'), undefined), {
+    type: type === 'destacado' || type === 'todo-el-ano' ? type : undefined,
     free: p.get('free') === 'true' ? true : undefined,
     audience: audience && (AUDIENCES as readonly string[]).includes(audience) ? audience : undefined,
     indoor: indoor === null ? undefined : indoor === 'true',

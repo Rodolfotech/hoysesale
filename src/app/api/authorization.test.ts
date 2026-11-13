@@ -27,7 +27,7 @@ const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 // Lo único que funciona sin sesión. Una ruta nueva queda protegida por defecto: si no está aquí, debe responder 401.
 const PUBLIC = new Set([
   'GET businesses', 'GET businesses/[slug]', 'GET businesses/check-slug', 'GET categories',
-  'GET events', 'GET events/[id]', 'GET events/[id]/media', 'POST events/[id]/interactions', 'GET health',
+  'GET events', 'GET events/[id]', 'GET home', 'GET events/[id]/media', 'POST events/[id]/interactions', 'GET health',
   'POST auth/check-email', 'POST auth/forgot-password', 'POST auth/google', 'GET auth/google/url',
   'POST auth/instagram', 'GET auth/instagram/url', 'POST auth/login', 'POST auth/logout',
   'POST auth/register', 'POST auth/reset-password',
