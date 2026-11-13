@@ -114,6 +114,16 @@ model Event {
   indoor    Boolean?
   amenities Json?
 
+  // Dónde se muestra en el inicio (tres casillas independientes al publicar):
+  // featured: Eventos destacados y próximos, hasta que termina el día del evento.
+  // hoySeSale: Hoy se sale (Hoy, Este finde o Próxima semana según la fecha del evento).
+  // yearRound: Experiencias todo el año (Turismo y empresas sin eventos); sigue visible hasta su fecha de término, máximo un año.
+  featured  Boolean @default(true)
+  yearRound Boolean @default(false)
+  hoySeSale Boolean @default(false)
+  // news: Lo nuevo en la región (servicios, productos y comercio funcional); visible hasta su fecha de término, máximo un año.
+  news      Boolean @default(false)
+
   imageUrl         String?
   instagramMediaId String?
   socialFeed       Json?     @db.JsonB

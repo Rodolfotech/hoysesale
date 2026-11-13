@@ -3,6 +3,7 @@
 import { apiErrorMessage } from '@/lib/api-error';
 import { useState, useEffect } from 'react';
 import { adminApi, authApi } from '../api';
+import { useAuth } from '../context/AuthContext';
 import { COMUNAS } from '../constants/comunas';
 import type { User } from '../types';
 import {
@@ -38,6 +39,27 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [stats, setStats] = useState<{ totalUsers: number; totalEvents: number; totalAttendees: number; totalInstagramClicks: number } | null>(null);
+  const { user, loading: authLoading } = useAuth();
+
+  // Oculta la barra de desplazamiento mientras se muestra el panel.
+  useEffect(() => {
+    document.documentElement.classList.add('hide-scrollbar');
+    return () => document.documentElement.classList.remove('hide-scrollbar');
+  }, []);
+
+  // Al cerrar sesión (o si la sesión deja de ser de administrador) se borran los datos cargados y vuelve el formulario.
+  // El servidor ya rechaza las peticiones sin sesión; esto evita que lo cargado siga a la vista.
+  const sessionLost = !authLoading && accessGranted === true && (!user || user.role !== 'ADMIN');
+  useEffect(() => {
+    if (!sessionLost) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- limpia el estado al perder la sesión */
+    setStats(null);
+    setUsers([]);
+    setSelectedUser(null);
+    setComuna('');
+    setAccessGranted(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [sessionLost]);
 
   useEffect(() => {
     adminApi.getStats().then(({ data }) => {

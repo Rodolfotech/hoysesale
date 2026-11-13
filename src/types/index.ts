@@ -54,6 +54,11 @@ export interface Event {
   address?: string;
   city?: string;
   isOnline: boolean;
+  yearRound?: boolean; // experiencia todo el año
+  featured?: boolean; // Eventos destacados
+  hoySeSale?: boolean; // Hoy se sale
+  news?: boolean; // Lo nuevo en la región
+  amenities?: string[] | null; // avisos para la visita (VISIT_NOTES)
   price?: number;
   imageUrl?: string;
   mapEmbedUrl?: string | null; // solo en el detalle del evento
@@ -112,6 +117,11 @@ export interface CreateEventPayload {
   instagramMediaId?: string;
   categoryId?: string;
   categoryName?: string;
+  yearRound?: boolean; // experiencia todo el año
+  featured?: boolean; // Eventos destacados
+  hoySeSale?: boolean; // Hoy se sale
+  news?: boolean; // Lo nuevo en la región
+  amenities?: string[]; // avisos para la visita (VISIT_NOTES)
 }
 
 export interface SocialConnectPayload {

@@ -7,7 +7,15 @@ import { useAuth } from '../context/AuthContext';
 import { eventsApi, socialApi, attendeesApi, mediaApi } from '../api';
 import { clearCache } from '../api/eventsCache';
 import { formatEntryPrice, parseEntryPrice, priceDigits } from '@/lib/event-price';
-import { EVENTS_NOT_ALLOWED_MESSAGE, canPublishEvents } from '@/lib/business-rules';
+import { EVENTS_NOT_ALLOWED_MESSAGE, PLACEMENT_LABELS, VISIT_NOTES, allowedPlacements, canPublishEvents, type Placement, type VisitNote } from '@/lib/business-rules';
+
+// Explicación de cada casilla de "¿Dónde se publicará?".
+const PLACEMENT_HINTS: Record<Placement, string> = {
+  featured: 'Duración limitada: se muestra hasta la fecha del evento.',
+  hoySeSale: 'Conciertos, ferias y panoramas con fecha: aparece en Hoy, Este finde, Próxima semana o Más adelante.',
+  yearRound: 'Actividades permanentes: se muestran hasta la fecha que elijas, como máximo un año.',
+  news: 'Lo que publica tu local (menú del día, productos nuevos, promociones): se muestra hasta la fecha que elijas.',
+};
 import { ImagePicker } from '../features/media/ImagePicker';
 import type { Event, SocialPost } from '../types';
 import {
@@ -26,6 +34,8 @@ import {
 import { SocialPostMedia } from '../features/social/SocialPostMedia';
 import { Pagination } from '../components/ui/Pagination';
 import { Popover } from '../components/ui/Popover';
+import { businessNow } from '@/lib/hours';
+import { addDays } from '@/lib/home';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -56,12 +66,42 @@ export default function CreateEventPage() {
   const [pubDate, setPubDate] = usePersistentState('draft:event:pubDate', '');
   const [pubTime, setPubTime] = usePersistentState('draft:event:pubTime', '');
   const [pubStartDate, setPubStartDate] = usePersistentState('draft:event:pubStartDate', '');
+  // "Visible desde" parte en la fecha de hoy (Chile). Un borrador con una fecha pasada también vuelve a hoy.
+  const today = businessNow().date;
+  const startDate = pubStartDate >= today ? pubStartDate : today;
+  // Dónde se publica: casillas independientes, solo las que permite el tipo de empresa (allowedPlacements).
+  // - Eventos destacados y Hoy se sale (empresas de eventos): necesitan fecha y hora, y "Visible hasta" es la fecha del evento.
+  // - Experiencias todo el año y Lo nuevo en la región: "Visible hasta" se elige, como máximo un año después de "Visible desde".
+  // Si se combinan, en Eventos destacados y Hoy se sale el evento igual deja de verse cuando termina su día.
+  const allowed = allowedPlacements(user?.category, user?.companyGiro);
+  const [pubYearRound, setPubYearRound] = usePersistentState('draft:event:pubYearRound', false);
+  const [pubHoySeSale, setPubHoySeSale] = usePersistentState('draft:event:pubHoySeSale', false);
+  const [pubFeatured, setPubFeatured] = usePersistentState('draft:event:pubFeatured', true);
+  const [pubNews, setPubNews] = usePersistentState('draft:event:pubNews', true);
   const [pubEndDate, setPubEndDate] = usePersistentState('draft:event:pubEndDate', '');
+  const placements: Record<Placement, boolean> = {
+    featured: allowed.includes('featured') && pubFeatured,
+    hoySeSale: allowed.includes('hoySeSale') && pubHoySeSale,
+    yearRound: allowed.includes('yearRound') && pubYearRound,
+    news: allowed.includes('news') && pubNews,
+  };
+  const placementSetters: Record<Placement, (value: boolean) => void> = {
+    featured: setPubFeatured, hoySeSale: setPubHoySeSale, yearRound: setPubYearRound, news: setPubNews,
+  };
+  const dated = placements.featured || placements.hoySeSale; // la fecha y la hora del evento son obligatorias
+  const longLived = placements.yearRound || placements.news; // "Visible hasta" se elige
+  const yearRound = placements.yearRound;
+  const maxEndDate = addDays(startDate, 365);
+  const endDate = !longLived ? pubDate : pubEndDate >= startDate && pubEndDate <= maxEndDate ? pubEndDate : addDays(startDate, yearRound ? 364 : 30);
   const [pubCategory, setPubCategory] = usePersistentState('draft:event:pubCategory', '');
   const [pubFree, setPubFree] = usePersistentState('draft:event:pubFree', true);
+  // Empresas que publican Novedades (antes sin el botón Publicar): en vez de "El evento es gratuito", avisos para la visita.
+  const isLocal = allowed.includes('news');
+  const [pubNotes, setPubNotes] = usePersistentState<VisitNote[]>('draft:event:pubNotes', []);
   const [pubPrice, setPubPrice] = usePersistentState('draft:event:pubPrice', '');
   const [publishing, setPublishing] = useState(false);
   const [pubError, setPubError] = useState('');
+  const [showMissing, setShowMissing] = useState(false); // se marcan los campos que faltan después del primer intento
   const [pubSuccess, setPubSuccess] = useState(false);
   // Imagen propia (sin Instagram): archivo subido o URL, y enlace opcional de publicación
   const [manualMode, setManualMode] = usePersistentState('ui:event:manualMode', false);
@@ -124,9 +164,31 @@ export default function CreateEventPage() {
     { key: 'registered', label: 'Publicaciones activas', icon: PlayCircle, count: activePublications.length },
   ];
 
+  // Campos obligatorios que faltan. Se recalcula al escribir: el aviso se achica a medida que se completan.
+  const missingFields = ([
+    [!selectedPost && !manualImageUrl.trim(), 'la imagen', null],
+    [!pubTitle.trim(), 'el título', 'evt-titulo'],
+    [!Object.values(placements).some(Boolean), 'dónde se publicará', null],
+    [dated && !pubDate, 'la fecha', 'evt-fecha'],
+    [dated && !pubTime, 'la hora', 'evt-hora'],
+    [dated && !pubCategory, 'la categoría', 'evt-categoria'],
+    [!isLocal && !pubFree && !priceDigits(pubPrice), 'el precio o condición de entrada', 'evt-precio'],
+  ] as const).filter(([missing]) => missing);
+  const isMissing = (id: string) => showMissing && missingFields.some(([, , fieldId]) => fieldId === id);
+  const missingMessage = showMissing && missingFields.length > 0
+    ? `Falta completar ${new Intl.ListFormat('es', { type: 'conjunction' }).format(missingFields.map(([, label]) => label))}.`
+    : '';
+
   const handlePublishEvent = async () => {
-    if (!hasImage || !pubTitle.trim() || !pubDate || !pubTime || !pubCategory || !pubStartDate || !pubEndDate) {
-      setPubError('Completa todos los campos obligatorios');
+    if (missingFields.length > 0) {
+      setShowMissing(true);
+      setPubError('');
+      const first = missingFields.find(([, , id]) => id)?.[2];
+      if (first) document.getElementById(first)?.focus();
+      return;
+    }
+    if (endDate < startDate) {
+      setPubError(longLived ? 'La fecha de término no puede ser anterior a la de publicación' : 'La fecha del evento no puede ser anterior a la fecha en que se publica');
       return;
     }
     if (!user?.comuna) {
@@ -137,14 +199,6 @@ export default function CreateEventPage() {
       setPubError(EVENTS_NOT_ALLOWED_MESSAGE);
       return;
     }
-    if (!selectedPost && !manualImageUrl.trim()) {
-      setPubError('Sube una imagen para la publicación');
-      return;
-    }
-    if (!pubFree && !priceDigits(pubPrice)) {
-      setPubError('Ingresa el valor de entrada');
-      return;
-    }
     setPublishing(true);
     setPubError('');
     try {
@@ -152,15 +206,19 @@ export default function CreateEventPage() {
       const { data: created } = await eventsApi.create({
         title: pubTitle.trim(),
         description,
-        date: new Date(`${pubDate}T${pubTime}`).toISOString(),
-        publicationStartDate: new Date(pubStartDate).toISOString(),
-        publicationEndDate: new Date(pubEndDate).toISOString(),
-        categoryName: pubCategory,
+        // Sin fecha (solo Experiencias o Novedades), la publicación se fecha el día en que empieza a verse.
+        date: new Date(pubDate && pubTime ? `${pubDate}T${pubTime}` : `${startDate}T12:00:00`).toISOString(),
+        publicationStartDate: new Date(`${startDate}T00:00:00`).toISOString(), // desde el inicio del día en Chile, no a las 21:00 del anterior
+        // Hasta el final de ese día: con la medianoche UTC el evento se ocultaba a las 21:00 del día anterior en Chile.
+        publicationEndDate: new Date(`${endDate}T23:59:59`).toISOString(),
+        categoryName: pubCategory || undefined,
+        ...placements,
         imageUrl: selectedPost ? selectedPost.media_url || undefined : manualImageUrl.trim() || undefined,
         instagramMediaId: selectedPost?.id || undefined,
         city: user.comuna,
         isOnline: false,
-        address: pubFree ? undefined : formatEntryPrice(priceDigits(pubPrice)),
+        address: isLocal || pubFree ? undefined : formatEntryPrice(priceDigits(pubPrice)),
+        amenities: isLocal ? pubNotes : undefined,
       });
       clearCache();
       setManualMode(false);
@@ -173,10 +231,16 @@ export default function CreateEventPage() {
       setPubTime('');
       setPubStartDate('');
       setPubEndDate('');
+      setPubYearRound(false);
+      setPubHoySeSale(false);
+      setPubFeatured(true);
+      setPubNews(true);
       setPubCategory('');
       setPubFree(true);
+      setPubNotes([]);
       setPubPrice('');
       setPubSuccess(true);
+      setShowMissing(false);
       loadUser();
       socialApi.getUserMedia().then(({ data }) => setInstagramPosts(data)).catch(() => {});
     } catch (err: unknown) {
@@ -344,7 +408,7 @@ export default function CreateEventPage() {
                     <legend className="text-sm font-semibold mb-1" style={{ color: '#1D1D1F' }}>Información básica</legend>
                     <div>
                       <label htmlFor="evt-titulo" className="block text-xs mb-1" style={{ color: '#1D1D1F' }}>Título *</label>
-                      <input id="evt-titulo" type="text" value={pubTitle} onChange={(e) => setPubTitle(e.target.value.slice(0, 45))} placeholder="Título del evento" aria-required="true" className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
+                      <input id="evt-titulo" aria-invalid={isMissing('evt-titulo') || undefined} type="text" value={pubTitle} onChange={(e) => setPubTitle(e.target.value.slice(0, 45))} placeholder="Título del evento" aria-required="true" className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
                       <p className="text-right text-[10px] mt-0.5" style={{ color: pubTitle.length >= 45 ? '#DC2626' : '#1D1D1F66' }}>{pubTitle.length}/45</p>
                     </div>
                     <div>
@@ -363,12 +427,22 @@ export default function CreateEventPage() {
                     <legend className="text-sm font-semibold mb-1" style={{ color: '#1D1D1F' }}>Fecha y lugar</legend>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label htmlFor="evt-fecha" className="block text-xs mb-1" style={{ color: '#1D1D1F' }}>Fecha *</label>
-                        <input id="evt-fecha" type="date" value={pubDate} onChange={(e) => setPubDate(e.target.value)} aria-required="true" className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <label htmlFor="evt-fecha" className="block text-xs" style={{ color: '#1D1D1F' }}>Fecha{dated ? ' *' : ''}</label>
+                          <Popover label="Información de la fecha del evento">
+                            <p>Es la fecha en que se realizará el evento.</p>
+                          </Popover>
+                        </div>
+                        <input id="evt-fecha" aria-invalid={isMissing('evt-fecha') || undefined} type="date" value={pubDate} onChange={(e) => setPubDate(e.target.value)} aria-required="true" className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
                       </div>
                       <div>
-                        <label htmlFor="evt-hora" className="block text-xs mb-1" style={{ color: '#1D1D1F' }}>Hora *</label>
-                        <input id="evt-hora" type="time" value={pubTime} onChange={(e) => setPubTime(e.target.value)} aria-required="true" className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <label htmlFor="evt-hora" className="block text-xs" style={{ color: '#1D1D1F' }}>Hora{dated ? ' *' : ''}</label>
+                          <Popover label="Información de la hora del evento">
+                            <p>Es la hora del evento.</p>
+                          </Popover>
+                        </div>
+                        <input id="evt-hora" aria-invalid={isMissing('evt-hora') || undefined} type="time" value={pubTime} onChange={(e) => setPubTime(e.target.value)} aria-required="true" className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5 mb-1">
@@ -388,20 +462,45 @@ export default function CreateEventPage() {
                     </div>
                   </fieldset>
 
+                  <fieldset className="space-y-2">
+                    <legend className="text-sm font-semibold mb-1" style={{ color: '#1D1D1F' }}>¿Dónde se publicará? *</legend>
+                    {allowed.map((placement) => (
+                      <label key={placement} className="flex items-start gap-2 text-sm cursor-pointer" style={{ color: '#1D1D1F' }}>
+                        <input type="checkbox" checked={placements[placement]} onChange={(e) => placementSetters[placement](e.target.checked)} className="mt-0.5 w-4 h-4 accent-blue-600" />
+                        <span><span className="font-medium">{PLACEMENT_LABELS[placement]}</span><span className="block text-xs" style={{ color: '#1D1D1F99' }}>{PLACEMENT_HINTS[placement]}</span></span>
+                      </label>
+                    ))}
+                  </fieldset>
+
                   <fieldset className="space-y-4">
                     <legend className="text-sm font-semibold mb-1" style={{ color: '#1D1D1F' }}>Publicación y categoría</legend>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label htmlFor="evt-pub-inicio" className="block text-xs mb-1" style={{ color: '#1D1D1F' }}>Visible desde *</label>
-                        <input id="evt-pub-inicio" type="date" value={pubStartDate} onChange={(e) => setPubStartDate(e.target.value)} aria-required="true" className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <label htmlFor="evt-pub-inicio" className="block text-xs" style={{ color: '#1D1D1F' }}>Visible desde *</label>
+                          <Popover label="Información de la fecha de publicación">
+                            <p>Es la fecha en que la publicación aparecerá en HoySeSale.</p>
+                          </Popover>
+                        </div>
+                        <input id="evt-pub-inicio" type="date" value={startDate} min={today} onChange={(e) => setPubStartDate(e.target.value)} aria-required="true" className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
                       </div>
                       <div>
-                        <label htmlFor="evt-pub-fin" className="block text-xs mb-1" style={{ color: '#1D1D1F' }}>Visible hasta *</label>
-                        <input id="evt-pub-fin" type="date" value={pubEndDate} onChange={(e) => setPubEndDate(e.target.value)} aria-required="true" className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <label htmlFor="evt-pub-fin" className="block text-xs" style={{ color: '#1D1D1F' }}>Visible hasta *</label>
+                          <Popover label="Información de la fecha de término">
+                            <p>{longLived ? 'Es la fecha en que la publicación dejará de mostrarse. Puede ser como máximo un año después de su publicación.' : 'Es la fecha del evento: no puede ser anterior ni posterior a ella.'}</p>
+                          </Popover>
+                        </div>
+                        <input id="evt-pub-fin" type="date" value={endDate} readOnly={!longLived} min={longLived ? startDate : undefined} max={longLived ? maxEndDate : undefined} onChange={(e) => setPubEndDate(e.target.value)} aria-required="true" className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
                       </div>
                       <div>
-                        <label htmlFor="evt-categoria" className="block text-xs mb-1" style={{ color: '#1D1D1F' }}>Categoría *</label>
-                        <select id="evt-categoria" value={pubCategory} onChange={(e) => setPubCategory(e.target.value)} aria-required="true" className="w-full px-3 py-2.5 rounded-xl text-sm light-form">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <label htmlFor="evt-categoria" className="block text-xs" style={{ color: '#1D1D1F' }}>Categoría{dated ? ' *' : ''}</label>
+                          <Popover label="Información de la categoría">
+                            <p>Selecciona una categoría.</p>
+                          </Popover>
+                        </div>
+                        <select id="evt-categoria" aria-invalid={isMissing('evt-categoria') || undefined} value={pubCategory} onChange={(e) => setPubCategory(e.target.value)} aria-required="true" className="w-full px-3 py-2.5 rounded-xl text-sm light-form">
                           <option value="">Selecciona</option>
                           {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                         </select>
@@ -409,19 +508,31 @@ export default function CreateEventPage() {
                     </div>
                   </fieldset>
 
-                  <fieldset className="space-y-3">
-                    <legend className="text-sm font-semibold mb-1" style={{ color: '#1D1D1F' }}>Entradas</legend>
-                    <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: '#1D1D1F' }}>
-                      <input type="checkbox" checked={pubFree} onChange={(e) => setPubFree(e.target.checked)} className="w-4 h-4 rounded" />
-                      El evento es gratuito
-                    </label>
-                    {!pubFree && (
-                      <div>
-                        <label htmlFor="evt-precio" className="block text-xs mb-1" style={{ color: '#1D1D1F' }}>Precio o condición de entrada</label>
-                        <input id="evt-precio" type="text" inputMode="numeric" value={formatEntryPrice(priceDigits(pubPrice))} onChange={(e) => setPubPrice(priceDigits(e.target.value))} placeholder="$precio" className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
-                      </div>
-                    )}
-                  </fieldset>
+                  {isLocal ? (
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-semibold mb-1" style={{ color: '#1D1D1F' }}>Para tu visita</legend>
+                      {VISIT_NOTES.map((note) => (
+                        <label key={note.id} className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: '#1D1D1F' }}>
+                          <input type="checkbox" checked={pubNotes.includes(note.id)} onChange={(e) => setPubNotes(e.target.checked ? [...pubNotes, note.id] : pubNotes.filter((id) => id !== note.id))} className="w-4 h-4 rounded" />
+                          {note.label}
+                        </label>
+                      ))}
+                    </fieldset>
+                  ) : (
+                    <fieldset className="space-y-3">
+                      <legend className="text-sm font-semibold mb-1" style={{ color: '#1D1D1F' }}>Entradas</legend>
+                      <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: '#1D1D1F' }}>
+                        <input type="checkbox" checked={pubFree} onChange={(e) => setPubFree(e.target.checked)} className="w-4 h-4 rounded" />
+                        El evento es gratuito
+                      </label>
+                      {!pubFree && (
+                        <div>
+                          <label htmlFor="evt-precio" className="block text-xs mb-1" style={{ color: '#1D1D1F' }}>Precio o condición de entrada</label>
+                          <input id="evt-precio" aria-invalid={isMissing('evt-precio') || undefined} type="text" inputMode="numeric" value={formatEntryPrice(priceDigits(pubPrice))} onChange={(e) => setPubPrice(priceDigits(e.target.value))} placeholder="$precio" className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
+                        </div>
+                      )}
+                    </fieldset>
+                  )}
                 </div>
 
                 <div className="space-y-6">
@@ -462,7 +573,7 @@ export default function CreateEventPage() {
                 </div>
               </div>
 
-              {pubError && <p role="alert" className="text-sm mt-6" style={{ color: '#DC2626' }}>{pubError}</p>}
+              {(missingMessage || pubError) && <p role="alert" className="text-sm mt-6" style={{ color: '#DC2626' }}>{missingMessage || pubError}</p>}
               {pubSuccess && <p role="status" className="text-sm mt-6" style={{ color: '#16A34A' }}>Evento publicado con éxito, puedes revisarlo en Publicaciones activas.</p>}
 
               <div className="flex justify-between gap-3 mt-8 pt-6" style={{ borderTop: '1px solid #E4EBFA' }}>
@@ -506,7 +617,7 @@ export default function CreateEventPage() {
                 const endDate = event.publicationEndDate ? new Date(event.publicationEndDate) : null;
                 const isActive = !endDate || endDate >= now;
                 return (
-                  <PublishedEventCard key={`${event.id}-${event.title}-${event.description}`} event={event} ownerComuna={user?.comuna} isActive={isActive} onUpdate={loadUser} />
+                  <PublishedEventCard key={`${event.id}-${event.title}-${event.description}`} event={event} ownerComuna={user?.comuna} allowed={allowed} isActive={isActive} onUpdate={loadUser} />
                 );
               })}
             </div>
@@ -543,7 +654,7 @@ function parseDescParts(desc: string) {
   return { subtitle: desc.slice(0, idx).trim(), descText: desc.slice(idx + 1).trim() };
 }
 
-function PublishedEventCard({ event, ownerComuna, isActive, onUpdate }: { event: Event; ownerComuna?: string; isActive: boolean; onUpdate: () => void }) {
+function PublishedEventCard({ event, ownerComuna, allowed, isActive, onUpdate }: { event: Event; ownerComuna?: string; allowed: Placement[]; isActive: boolean; onUpdate: () => void }) {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -565,6 +676,15 @@ function PublishedEventCard({ event, ownerComuna, isActive, onUpdate }: { event:
   );
   const [imageUrl, setImageUrl] = useState(event.imageUrl || '');
   const [imageError, setImageError] = useState('');
+  // Dónde se publica (tres casillas independientes, al menos una).
+  const [featured, setFeatured] = useState(event.featured ?? true);
+  const [hoySeSale, setHoySeSale] = useState(event.hoySeSale ?? false);
+  const [yearRound, setYearRound] = useState(event.yearRound ?? false);
+  const [news, setNews] = useState(event.news ?? false);
+  const isLocal = allowed.includes('news');
+  const [notes, setNotes] = useState<string[]>(Array.isArray(event.amenities) ? event.amenities : []);
+  const [placementError, setPlacementError] = useState('');
+  const [saveError, setSaveError] = useState('');
 
   const handleUpdate = async () => {
     // Una publicación sin imagen desaparece de Publicaciones activas.
@@ -574,11 +694,16 @@ function PublishedEventCard({ event, ownerComuna, isActive, onUpdate }: { event:
     }
     // Un enlace de venta antiguo se conserva si no se ingresa un valor.
     const hasTicketLink = event.address?.startsWith('http');
-    if (tipo !== 'gratis' && !price && !hasTicketLink) {
+    if (!isLocal && tipo !== 'gratis' && !price && !hasTicketLink) {
       setPriceError('Ingresa el valor de entrada');
       return;
     }
+    if (!featured && !hoySeSale && !yearRound && !news) {
+      setPlacementError('Elige dónde se publicará el evento');
+      return;
+    }
     setLoading(true);
+    setSaveError('');
     try {
       const description = [subtitle.trim(), descText.trim()].filter(Boolean).join('\n') || event.description;
       await eventsApi.update(event.id, {
@@ -588,14 +713,21 @@ function PublishedEventCard({ event, ownerComuna, isActive, onUpdate }: { event:
         city: ownerComuna, // la comuna del evento es siempre la de la empresa
         categoryName: category || undefined,
         imageUrl: imageUrl || undefined,
-        address: tipo === 'gratis' ? null : formatEntryPrice(price) || undefined,
+        address: isLocal || tipo === 'gratis' ? null : formatEntryPrice(price) || undefined,
+        ...(isLocal ? { amenities: notes as VisitNote[] } : {}),
         publicationStartDate: startDate ? new Date(startDate).toISOString() : undefined,
         publicationEndDate: endDate ? new Date(endDate).toISOString() : undefined,
+        featured,
+        hoySeSale,
+        yearRound,
+        news,
       });
       setEditing(false);
       clearCache();
       onUpdate();
-    } catch { /* noop */ } finally { setLoading(false); }
+    } catch (e) {
+      setSaveError((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'No se pudieron guardar los cambios');
+    } finally { setLoading(false); }
   };
 
   // Reanudar: vuelve a publicar la misma publicación (sin abrir el formulario de edición).
@@ -655,7 +787,7 @@ function PublishedEventCard({ event, ownerComuna, isActive, onUpdate }: { event:
             </p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <button type="button" onClick={() => setEditing(true)} className="p-1.5 rounded-lg border cursor-pointer" style={{ borderColor: '#E4EBFA', color: '#2563EB' }}><Edit3 className="w-3.5 h-3.5" /></button>
+            <button type="button" aria-label="Editar" onClick={() => setEditing(true)} className="p-1.5 rounded-lg border cursor-pointer" style={{ borderColor: '#E4EBFA', color: '#2563EB' }}><Edit3 className="w-3.5 h-3.5" /></button>
             {isActive ? (
               <button type="button" onClick={handleStop} disabled={loading} className="p-1.5 rounded-lg border cursor-pointer" style={{ borderColor: '#E4EBFA', color: '#DC2626' }}><PauseCircle className="w-3.5 h-3.5" /></button>
             ) : (
@@ -744,7 +876,39 @@ function PublishedEventCard({ event, ownerComuna, isActive, onUpdate }: { event:
               </div>
             </div>
 
+            <fieldset className="mb-6">
+              <legend style={{ fontSize: '13px', fontWeight: 700, color: '#1D1D1F', fontFamily: "'Raleway', system-ui, sans-serif", marginBottom: '8px' }}>¿DÓNDE SE PUBLICARÁ?</legend>
+              <div className="flex flex-wrap gap-x-8 gap-y-2">
+                {([
+                  ['featured', featured, setFeatured],
+                  ['hoySeSale', hoySeSale, setHoySeSale],
+                  ['yearRound', yearRound, setYearRound],
+                  ['news', news, setNews],
+                ] as const).filter(([placement]) => allowed.includes(placement) || event[placement]).map(([placement, checked, set]) => (
+                  <label key={placement} className="flex items-center gap-2.5 cursor-pointer">
+                    <input type="checkbox" checked={checked} onChange={(e) => { set(e.target.checked); setPlacementError(''); }} className="w-5 h-5 rounded" style={{ accentColor: '#2563EB' }} />
+                    <span style={{ fontSize: '13px', color: '#1D1D1F', fontFamily: "'Raleway', system-ui, sans-serif" }}>{PLACEMENT_LABELS[placement]}</span>
+                  </label>
+                ))}
+              </div>
+              {placementError && <p role="alert" className="text-xs mt-1" style={{ color: '#DC2626' }}>{placementError}</p>}
+            </fieldset>
+
             <div className="flex items-start gap-6">
+              {isLocal ? (
+                <fieldset style={{ flexShrink: 0 }}>
+                  <legend style={{ fontSize: '13px', fontWeight: 700, color: '#1D1D1F', fontFamily: "'Raleway', system-ui, sans-serif", marginBottom: '8px' }}>PARA TU VISITA</legend>
+                  <div className="flex flex-wrap gap-x-6 gap-y-2">
+                    {VISIT_NOTES.map((note) => (
+                      <label key={note.id} className="flex items-center gap-2.5 cursor-pointer">
+                        <input type="checkbox" checked={notes.includes(note.id)} onChange={(e) => setNotes(e.target.checked ? [...notes, note.id] : notes.filter((id) => id !== note.id))} className="w-5 h-5 rounded" style={{ accentColor: '#2563EB' }} />
+                        <span style={{ fontSize: '13px', color: '#1D1D1F', fontFamily: "'Raleway', system-ui, sans-serif" }}>{note.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              ) : (
+                <>
               <div style={{ flexShrink: 0 }}>
                 <p style={{ fontSize: '13px', fontWeight: 700, color: '#1D1D1F', fontFamily: "'Raleway', system-ui, sans-serif", marginBottom: '8px' }}>ESTE EVENTO ES GRATUITO</p>
                 <label className="flex items-center gap-2.5 cursor-pointer">
@@ -757,6 +921,8 @@ function PublishedEventCard({ event, ownerComuna, isActive, onUpdate }: { event:
                 <input type="text" inputMode="numeric" aria-label="Valor de entrada" value={tipo === 'gratis' ? '' : formatEntryPrice(price)} onChange={(e) => { setPrice(priceDigits(e.target.value)); setPriceError(''); }} placeholder="$precio" disabled={tipo === 'gratis'} className="w-full px-4 py-3 rounded-xl text-sm light-form disabled:opacity-40" />
                 {priceError && <p role="alert" className="text-xs mt-1" style={{ color: '#DC2626' }}>{priceError}</p>}
               </div>
+                </>
+              )}
               <button
                 type="button"
                 onClick={handleUpdate}
@@ -767,6 +933,7 @@ function PublishedEventCard({ event, ownerComuna, isActive, onUpdate }: { event:
                 {loading ? 'Guardando...' : 'Guardar cambios'}
               </button>
             </div>
+            {saveError && <p role="alert" className="text-sm mt-3" style={{ color: '#DC2626' }}>{saveError}</p>}
           </div>
         </div>
       </div>

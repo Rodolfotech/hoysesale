@@ -1,5 +1,5 @@
 import { prisma } from '../db';
-import { EVENTS_NOT_ALLOWED_MESSAGE, canPublishEvents } from '@/lib/business-rules';
+import { EVENTS_NOT_ALLOWED_MESSAGE, PLACEMENT_LABELS, allowedPlacements, canPublishEvents, type Placement } from '@/lib/business-rules';
 import { Prisma } from '@/generated/prisma/client';
 import { badRequest, forbidden, notFound, conflict } from '../http';
 import { PUBLIC_USER_SELECT } from '../users/public-user';
@@ -17,6 +17,7 @@ const DEFAULT_PAGE_SIZE = 12;
 export type Requester = { id: string; role: string };
 
 export type EventListFilters = {
+  type?: 'destacado' | 'todo-el-ano'; // destacado: casilla Eventos destacados y fecha vigente; todo-el-ano: experiencias
   free?: boolean;
   audience?: string;
   indoor?: boolean;
@@ -33,8 +34,29 @@ export function publicationWindow(now: Date) {
 
 // Eventos vigentes: publicados y cuya fecha no pasó. Los eventos no tienen hora de término,
 // así que cada uno sigue visible hasta que termina su día en Chile.
+// Experiencias todo el año y Lo nuevo en la región no dependen de su fecha: las limita solo su fecha de término.
 export function activeEvents(now: Date) {
-  return { ...publicationWindow(now), date: { gte: businessDayStart(now) } };
+  const window = publicationWindow(now);
+  return { ...window, AND: [...window.AND, { OR: [{ yearRound: true }, { news: true }, { date: { gte: businessDayStart(now) } }] }] };
+}
+
+// Experiencias y novedades duran como máximo un año desde que se publican (o desde su fecha si no tienen inicio).
+const YEAR_MS = 367 * 24 * 60 * 60 * 1000; // un año y un margen por las zonas horarias
+
+function assertLongWindow(start: Date, end: Date | null | undefined) {
+  if (!end) throw badRequest('Esta publicación necesita fecha de término (Visible hasta)');
+  if (end.getTime() - start.getTime() > YEAR_MS) throw badRequest('Esta publicación puede estar visible como máximo un año');
+  if (end < start) throw badRequest('La fecha de término no puede ser anterior al inicio');
+}
+
+type Placements = Record<Placement, boolean>;
+
+// Dónde se publica: al menos una casilla, y solo las que permite el tipo de empresa (business-rules.ts).
+function assertPlacements(chosen: Placements, allowed: Placement[]) {
+  const marked = (Object.keys(chosen) as Placement[]).filter((p) => chosen[p]);
+  if (marked.length === 0) throw badRequest('Elige dónde se publicará');
+  const notAllowed = marked.find((p) => !allowed.includes(p));
+  if (notAllowed) throw forbidden(`Tu empresa no puede publicar en ${PLACEMENT_LABELS[notAllowed]}`);
 }
 
 export async function listEvents(city: string | undefined, page: number | undefined, limit: number | undefined, filters: EventListFilters) {
@@ -46,6 +68,10 @@ export async function listEvents(city: string | undefined, page: number | undefi
 
   const where: Record<string, unknown> = activeEvents(now);
   if (city) where.city = { equals: city, mode: 'insensitive' };
+  if (filters.type === 'destacado') Object.assign(where, { featured: true, date: { gte: businessDayStart(now) } });
+  if (filters.type === 'todo-el-ano') where.yearRound = true;
+  // Los listados de eventos no muestran lo que solo va a Lo nuevo en la región.
+  if (!filters.type) where.AND = [...(where.AND as object[]), { OR: [{ featured: true }, { hoySeSale: true }, { yearRound: true }] }];
   if (filters.free) where.entryType = 'GRATIS';
   if (filters.audience) where.audience = filters.audience;
   if (filters.indoor !== undefined) where.indoor = filters.indoor;
@@ -152,6 +178,19 @@ export async function createEvent(ownerId: string, body: z.output<typeof CreateE
   const comuna = await ownerComuna(ownerId);
   assertSameComuna(body.city, comuna);
   await assertCanPublishEvents(ownerId);
+  const owner = await prisma.user.findUnique({ where: { id: ownerId }, select: { category: true, companyGiro: true } });
+  const allowed = allowedPlacements(owner?.category, owner?.companyGiro);
+  const placements: Placements = {
+    featured: body.featured ?? allowed.includes('featured'),
+    hoySeSale: body.hoySeSale ?? false,
+    yearRound: body.yearRound ?? false,
+    news: body.news ?? false,
+  };
+  assertPlacements(placements, allowed);
+  if (placements.yearRound || placements.news) {
+    const end = body.publicationEndDate ? new Date(body.publicationEndDate) : null;
+    assertLongWindow(body.publicationStartDate ? new Date(body.publicationStartDate) : new Date(body.date), end);
+  }
   const categoryId = body.categoryId || (await resolveCategory(body.categoryName));
   try {
     return await prisma.event.create({
@@ -174,6 +213,7 @@ export async function createEvent(ownerId: string, body: z.output<typeof CreateE
         audience: body.audience,
         indoor: body.indoor,
         amenities: body.amenities ?? Prisma.DbNull,
+        ...placements,
       },
       include: { owner: { select: PUBLIC_USER_SELECT }, category: true },
     });
@@ -196,6 +236,34 @@ export async function updateEvent(id: string, body: z.output<typeof UpdateEventS
   // null borra la fecha de término (el evento queda visible sin fin).
   if (publicationEndDate !== undefined) data.publicationEndDate = publicationEndDate ? new Date(publicationEndDate) : null;
   if (categoryName) data.categoryId = await resolveCategory(categoryName);
+  // Dónde se publica: las mismas reglas que al crear. Una casilla que ya estaba marcada se puede conservar
+  // aunque la empresa haya cambiado de tipo; solo se rechaza marcar una nueva que no le corresponde.
+  const touchesPlacement = body.featured !== undefined || body.hoySeSale !== undefined || body.yearRound !== undefined || body.news !== undefined;
+  if (touchesPlacement || publicationStartDate !== undefined || publicationEndDate !== undefined) {
+    const current = await prisma.event.findUnique({
+      where: { id },
+      select: {
+        featured: true, hoySeSale: true, yearRound: true, news: true, date: true, publicationStartDate: true, publicationEndDate: true,
+        owner: { select: { category: true, companyGiro: true } },
+      },
+    });
+    if (current) {
+      const placements: Placements = {
+        featured: body.featured ?? current.featured,
+        hoySeSale: body.hoySeSale ?? current.hoySeSale,
+        yearRound: body.yearRound ?? current.yearRound,
+        news: body.news ?? current.news,
+      };
+      const allowed = allowedPlacements(current.owner.category, current.owner.companyGiro);
+      const kept = (Object.keys(placements) as Placement[]).filter((p) => current[p] && placements[p]);
+      assertPlacements(placements, [...allowed, ...kept]);
+      if (placements.yearRound || placements.news) {
+        const start = (data.publicationStartDate as Date | undefined) ?? current.publicationStartDate ?? current.date;
+        const end = publicationEndDate !== undefined ? (data.publicationEndDate as Date | null) : current.publicationEndDate;
+        assertLongWindow(start, end);
+      }
+    }
+  }
   return prisma.event.update({ where: { id }, data });
 }
 

@@ -1,6 +1,7 @@
 import api from './client';
 import { ADMIN_API_PREFIX } from '../constants/admin';
 import type { User, Event, Category, CreateEventPayload, SocialConnectPayload, SocialPost, PaginatedResponse } from '../types';
+import type { HomeSections } from '@/lib/home';
 import type { AddressLabel, Business, HideableTab, InstagramLabel, LogoShape, PhoneLabel, WebsiteLabel } from '@/lib/business';
 
 // Registro obligatorio de organizador (mismos campos que RegisterDto del backend)
@@ -34,7 +35,7 @@ export const authApi = {
 };
 
 export const eventsApi = {
-  getAll: (params?: { dateFrom?: string; dateTo?: string; categoryId?: string; city?: string; page?: number; limit?: number }) =>
+  getAll: (params?: { type?: 'destacado' | 'todo-el-ano'; dateFrom?: string; dateTo?: string; categoryId?: string; city?: string; page?: number; limit?: number }) =>
     api.get<PaginatedResponse<Event>>('/events', { params }),
   getBySlug: (slug: string) => api.get<Event>(`/events/${slug}`),
   create: (data: CreateEventPayload) => api.post<Event>('/events', data),
@@ -170,4 +171,8 @@ export const businessApi = {
     hiddenTabs: HideableTab[];
     contactInAllTabs: boolean;
   }>) => api.put<Partial<User>>('/businesses/me', data),
+};
+
+export const homeApi = {
+  sections: () => api.get<HomeSections>('/home'),
 };
