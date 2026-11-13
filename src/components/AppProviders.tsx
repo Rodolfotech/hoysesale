@@ -2,10 +2,12 @@
 
 import { Suspense, type ReactNode } from 'react';
 import { AuthProvider } from '../context/AuthContext';
+import { Analytics } from './shared/Analytics';
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
+      <Analytics />
       <Suspense
         fallback={
           <div className="min-h-screen flex items-center justify-center">

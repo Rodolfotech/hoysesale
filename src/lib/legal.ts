@@ -11,8 +11,8 @@ export const DATA_CONTROLLER = {
   postalAddress: null as string | null,
 };
 
-export const PRIVACY_POLICY_VERSION = '2.0';
-export const PRIVACY_POLICY_DATE = '10 de noviembre de 2026';
+export const PRIVACY_POLICY_VERSION = '2.1'; // 2.1: analítica con Google Tag Manager, Google Analytics y Microsoft Clarity
+export const PRIVACY_POLICY_DATE = '13 de noviembre de 2026';
 
 export const TERMS_VERSION = '2.0';
 export const TERMS_DATE = '10 de noviembre de 2026';

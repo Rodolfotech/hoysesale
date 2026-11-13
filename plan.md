@@ -1,13 +1,13 @@
 # Plan de protección de datos y pendientes — HoySeSale.cl
 
-Tareas pendientes para cumplir la Ley N° 21.719, que entra en vigencia el **1 de diciembre de 2026**, y otros pendientes del producto. Cada tarea tiene un criterio de éxito verificable. Actualizado el 11-11-2026.
+Tareas pendientes para cumplir la Ley N° 21.719, que entra en vigencia el **1 de diciembre de 2026**, y otros pendientes del producto. Cada tarea tiene un criterio de éxito verificable. Actualizado el 13-11-2026.
 
 Las tareas de seguridad técnica (rotar secretos, límites, escalabilidad) están en `plan_seguridad.md`.
 
 ## Estado actual
 
 - **Producción:** el banner de cookies y la Política de privacidad versión 2.0 se ven en `www.hoysesale.cl` (revisado el 11-11-2026). Falta confirmar en Vercel que el deployment corresponde al último commit de `main`.
-- **Sin commit en `main`:** corrección del registro con Google, revisión de origen del código de Google, arrastrar imágenes en productos y servicios, `.gitignore` con `opencode.json`, el aviso "Completa tu perfil", el guardado parcial del perfil, los selects de categoría y giro, el RUT y el teléfono con formato, y la actualización de estos documentos. No requieren cambios en la base de datos.
+- **Sin commit en `main`:** la analítica con Google Tag Manager (aviso de cookies, Política de privacidad 2.1 y CSP). Lo anterior se subió a `main` con los Pull Requests #12 y #13; falta confirmar en Vercel el commit del deployment. No requiere cambios en la base de datos.
 - **Próximo paso:** completar los datos del responsable (tarea 1) antes del 1 de diciembre de 2026.
 
 ## Hecho
@@ -30,7 +30,14 @@ Las tareas de seguridad técnica (rotar secretos, límites, escalabilidad) está
 | Guardado parcial del perfil | Se guarda lo completo aunque falten datos; lo escrito se valida y el aviso indica cuántos faltan |
 | Categoría y giro | Selects agrupados: 24 categorías y 65 giros del SII. El servidor rechaza valores fuera de las listas |
 | Tipo de categoría | Cada categoría es de servicios (9), productos (7) o eventos (8). Solo publican eventos Turismo y Panoramas. Las pestañas del micro-sitio las define el tipo, para el dueño y los visitantes |
-| RUT y teléfono | RUT de empresa desde 50.000.000 y con formato `74.000.888-5` al escribir. Teléfono con `+569` fijo y 8 dígitos (`8765 4321`) |
+| RUT y teléfono | RUT de empresa desde 50.000.000 y con formato `74.000.888-5` al escribir. Teléfono con `+569` fijo y 8 dígitos (`8765 4321`); en Contáctanos se muestra `+569 3333 1333` |
+| Menú de navegación | Crear página entre Publicar evento y Cerrar sesión. Publicar evento deshabilitado para las categorías que no publican eventos |
+| Agregar servicio | Nombre (60), descripción (200), hasta 8 etiquetas con sugerencias e imagen WEBP, JPG o PNG de 2 MB con popover que sugiere WEBP. El servidor aplica los mismos límites |
+| Cabecera del micro-sitio | Logo con borde blanco (marco redondo y cuadrado) y el nombre del negocio debajo |
+| Micro-sitio para visitantes | Una sola página: Nosotros (con Ver más) y la sección principal a la izquierda; Horario, Contacto y ubicación (con Cómo llegar) y Reseñas a la derecha. Reseñas con promedio, barras por estrella y Escribir una reseña. Paginación de servicios siempre visible. El editor del dueño sigue en pestañas |
+| Orden de las pestañas | Nosotros, la principal (Servicios, Productos o Eventos), Horario, Contáctanos y Reseñas, para visitante y dueño |
+| Analítica con consentimiento | Google Tag Manager (`GTM-5FGKKZNT`) se carga solo si el visitante acepta Analítica en el aviso de cookies. Política de privacidad 2.1 y cookies 2.0 (se vuelve a pedir el consentimiento). Al retirarlo se borran las cookies del sitio. Probado en un build de producción |
+| Ver como visitante | El dueño ve su página como un visitante, sin controles ni pestañas ocultas, y vuelve con Volver a editar. Probado en local y en un build de producción |
 
 ## Fase 0: antes del 1 de diciembre de 2026
 
@@ -126,6 +133,26 @@ Las tareas de seguridad técnica (rotar secretos, límites, escalabilidad) está
 11. **Mostrar solo los giros de la categoría elegida.**
    Hoy el select de giro ofrece todos los grupos, sin importar la categoría.
    *Criterio:* decisión tomada y, si aplica, el giro se filtra por el grupo de la categoría.
+
+12. **Barra de pestañas bajo el menú fijo.**
+   Al bajar, la barra de pestañas del micro-sitio queda detrás del menú superior fijo del sitio (pasa en el editor y en la vista del visitante). Reportado, no corregido.
+   *Criterio:* la barra queda visible justo debajo del menú al desplazarse.
+
+13. **Detalles pendientes del diseño de referencia del micro-sitio.**
+   La referencia incluye filtros por etiqueta en Servicios, contador de servicios, insignia Destacado, precio "Desde", miniaturas bajo las fotos de Nosotros, mapa dentro de Contacto y el color naranja. Hoy se usan los colores del sitio y Cómo llegar en vez del mapa (el mapa necesita consentimiento de cookies).
+   *Criterio:* decisión tomada sobre cada uno.
+
+14. **Servicios existentes con textos largos.**
+   Desde ahora el nombre de un servicio admite 60 caracteres y la descripción 200. Los guardados antes con más no se pueden editar sin acortarlos.
+   *Criterio:* consulta de solo lectura en producción y, si hay casos, se avisa a los dueños o se acortan.
+
+15. **Configurar Google Analytics y Clarity dentro de GTM (lo hace el dueño del proyecto).**
+   El contenedor `GTM-5FGKKZNT` está publicado sin etiquetas (revisado el 13-11-2026), así que todavía no se envían datos a Google Analytics ni a Clarity. Hay que agregar la etiqueta de Google Analytics (`G-…`) y la de Microsoft Clarity en GTM y publicar el contenedor. En Clarity, conviene el enmascaramiento estricto para que no se vea lo que la gente escribe.
+   *Criterio:* con Analítica aceptada, Google Analytics en tiempo real y Clarity muestran la visita; con Analítica rechazada, no.
+
+16. **Acuerdo de tratamiento de datos con Microsoft (lo hace el dueño del proyecto).**
+   Clarity agrega a Microsoft como proveedor en Estados Unidos. Igual que con Vercel, Supabase, Google y Meta (Fase 0, tarea 3), aceptar sus términos de protección de datos.
+   *Criterio:* queda guardada la constancia del acuerdo.
 
 ## Orden sugerido
 

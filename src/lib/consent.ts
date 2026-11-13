@@ -1,6 +1,6 @@
 // Preferencias de cookies del visitante (Ley 21.719, art. 12): consentimiento previo, específico y revocable.
 // Al cambiar la versión se vuelve a pedir el consentimiento a todos los visitantes.
-export const COOKIE_POLICY_VERSION = '1.0';
+export const COOKIE_POLICY_VERSION = '2.0'; // 2.0: se agrega la analítica (Google Tag Manager)
 
 export const CONSENT_STORAGE_KEY = 'hss_consent';
 const CONSENT_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000; // pasado un año se vuelve a preguntar
@@ -10,6 +10,7 @@ const OPEN_EVENT = 'hss:consent-open';
 export interface Consent {
   version: string;
   maps: boolean; // Google Maps en el detalle de los eventos
+  analytics: boolean; // Google Tag Manager y las herramientas de analítica que carga
   date: string;
 }
 
@@ -29,7 +30,7 @@ export function parseConsent(raw: string | null, now = Date.now()): Consent | nu
   if (!raw) return null;
   try {
     const consent = JSON.parse(raw) as Consent;
-    if (consent.version !== COOKIE_POLICY_VERSION || typeof consent.maps !== 'boolean') return null;
+    if (consent.version !== COOKIE_POLICY_VERSION || typeof consent.maps !== 'boolean' || typeof consent.analytics !== 'boolean') return null;
     const age = now - new Date(consent.date).getTime();
     return age >= 0 && age <= CONSENT_MAX_AGE_MS ? consent : null;
   } catch {
@@ -37,8 +38,15 @@ export function parseConsent(raw: string | null, now = Date.now()): Consent | nu
   }
 }
 
-export function saveConsent(choice: { maps: boolean }): void {
-  const value = JSON.stringify({ version: COOKIE_POLICY_VERSION, maps: choice.maps, date: new Date().toISOString() });
+// Lo que no se indica conserva la elección vigente; sin elección previa queda rechazado.
+export function saveConsent(choice: Partial<Pick<Consent, 'maps' | 'analytics'>>): void {
+  const current = parseConsent(readConsentRaw());
+  const value = JSON.stringify({
+    version: COOKIE_POLICY_VERSION,
+    maps: choice.maps ?? current?.maps ?? false,
+    analytics: choice.analytics ?? current?.analytics ?? false,
+    date: new Date().toISOString(),
+  });
   memory = value;
   try {
     window.localStorage.setItem(CONSENT_STORAGE_KEY, value);
