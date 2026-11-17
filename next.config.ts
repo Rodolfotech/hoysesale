@@ -22,6 +22,9 @@ const CONTENT_SECURITY_POLICY = [
 
 // Frontend y API viven en la misma app: las rutas /api/* son route handlers (src/app/api).
 const nextConfig: NextConfig = {
+  experimental: {
+    agentUpgrade: 'security',
+  },
   async headers() {
     if (process.env.NODE_ENV !== 'production') return [];
     return [{
