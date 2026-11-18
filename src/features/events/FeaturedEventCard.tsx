@@ -6,6 +6,7 @@ import type { Event } from '../../types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { EventDetailModal } from './EventDetailModal';
+import { NO_ENTRY_TYPE } from '@/lib/event-price';
 
 function getCategoryStyle() {
   return { bg: '#FFFFFF', text: '#1D1D1F' };
@@ -19,6 +20,7 @@ export function FeaturedEventCard({ event }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const priceFromAddress = event.address && !event.address.startsWith('http') ? event.address : null;
   const isFree = !event.price && !priceFromAddress;
+  const noEntry = event.entryType === NO_ENTRY_TYPE; // publicación de un local: sin "Gratis" ni "Evento de pago"
   const eventDate = new Date(event.date);
   const catStyle = getCategoryStyle();
 
@@ -54,12 +56,12 @@ export function FeaturedEventCard({ event }: Props) {
         )}
 
         {/* Badge gratuito / pago */}
-        <span
+        {!noEntry && <span
           className="absolute bottom-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full"
           style={{ backgroundColor: '#FFFFFF', color: '#1D1D1F', border: '1px solid #E4EBFA', fontFamily: 'var(--font-brand)' }}
         >
           {isFree ? 'Gratis' : 'Evento de pago'}
-        </span>
+        </span>}
       </div>
 
       {/* Contenido */}

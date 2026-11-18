@@ -1,8 +1,10 @@
 // Filtros y tipos de eventos: insignias (entryType, audience, indoor) y métricas (interacciones).
+import { NO_ENTRY_TYPE } from '@/lib/event-price';
+
 export const INTERACTION_TYPES = ['VIEW', 'DIRECTIONS', 'EXTERNAL_LINK'] as const;
 export type InteractionType = (typeof INTERACTION_TYPES)[number];
 
-export const ENTRY_TYPES = ['GRATIS', 'CONSUMO_MINIMO', 'COVER'] as const;
+export const ENTRY_TYPES = ['GRATIS', 'CONSUMO_MINIMO', 'COVER', NO_ENTRY_TYPE] as const;
 export const AUDIENCES = ['PAREJA', 'FAMILIA', 'GENERAL'] as const;
 
 export type TimeSlot = 'tarde' | 'noche';

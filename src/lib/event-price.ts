@@ -1,6 +1,10 @@
 // Valor de entrada de un evento: el formulario guarda solo dígitos y se publica como $5.000.
 const ENTRY_PRICE_MAX_DIGITS = 9;
 
+// Publicación sin entrada (las de locales: un menú, un producto). No se muestra como "Gratis" ni "Entrada Liberada";
+// el precio es opcional y, si lo hay, se muestra como "Precio".
+export const NO_ENTRY_TYPE = 'SIN_ENTRADA' as const;
+
 export function priceDigits(value: string): string {
   return value.replace(/\D/g, '').replace(/^0+/, '').slice(0, ENTRY_PRICE_MAX_DIGITS);
 }

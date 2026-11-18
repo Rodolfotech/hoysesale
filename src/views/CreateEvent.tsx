@@ -6,7 +6,7 @@ import { Link, useNavigate } from '@/lib/router';
 import { useAuth } from '../context/AuthContext';
 import { eventsApi, socialApi, attendeesApi, mediaApi } from '../api';
 import { clearCache } from '../api/eventsCache';
-import { formatEntryPrice, parseEntryPrice, priceDigits } from '@/lib/event-price';
+import { NO_ENTRY_TYPE, formatEntryPrice, parseEntryPrice, priceDigits } from '@/lib/event-price';
 import { EVENTS_NOT_ALLOWED_MESSAGE, PLACEMENT_LABELS, VISIT_NOTES, allowedPlacements, canPublishEvents, type Placement, type VisitNote } from '@/lib/business-rules';
 
 // Explicación de cada casilla de "¿Dónde se publicará?".
@@ -217,7 +217,9 @@ export default function CreateEventPage() {
         instagramMediaId: selectedPost?.id || undefined,
         city: user.comuna,
         isOnline: false,
-        address: isLocal || pubFree ? undefined : formatEntryPrice(priceDigits(pubPrice)),
+        // Un local no tiene entrada: el precio es opcional y no se muestra "Gratis".
+        address: isLocal ? formatEntryPrice(priceDigits(pubPrice)) || undefined : pubFree ? undefined : formatEntryPrice(priceDigits(pubPrice)),
+        entryType: isLocal ? NO_ENTRY_TYPE : undefined,
         amenities: isLocal ? pubNotes : undefined,
       });
       clearCache();
@@ -517,6 +519,11 @@ export default function CreateEventPage() {
                           {note.label}
                         </label>
                       ))}
+                      <div className="pt-2">
+                        <label htmlFor="evt-precio-local" className="block text-xs mb-1" style={{ color: '#1D1D1F' }}>Precio (opcional)</label>
+                        <input id="evt-precio-local" type="text" inputMode="numeric" value={formatEntryPrice(priceDigits(pubPrice))} onChange={(e) => setPubPrice(priceDigits(e.target.value))} placeholder="$precio" className="w-full px-3 py-2.5 rounded-xl text-sm light-form" />
+                        <p className="text-xs mt-1" style={{ color: '#1D1D1F99' }}>Déjalo vacío si no quieres mostrar un precio.</p>
+                      </div>
                     </fieldset>
                   ) : (
                     <fieldset className="space-y-3">
@@ -713,7 +720,8 @@ function PublishedEventCard({ event, ownerComuna, allowed, isActive, onUpdate }:
         city: ownerComuna, // la comuna del evento es siempre la de la empresa
         categoryName: category || undefined,
         imageUrl: imageUrl || undefined,
-        address: isLocal || tipo === 'gratis' ? null : formatEntryPrice(price) || undefined,
+        address: isLocal ? formatEntryPrice(price) || null : tipo === 'gratis' ? null : formatEntryPrice(price) || undefined,
+        ...(isLocal ? { entryType: NO_ENTRY_TYPE } : {}),
         ...(isLocal ? { amenities: notes as VisitNote[] } : {}),
         publicationStartDate: startDate ? new Date(startDate).toISOString() : undefined,
         publicationEndDate: endDate ? new Date(endDate).toISOString() : undefined,
@@ -905,6 +913,10 @@ function PublishedEventCard({ event, ownerComuna, allowed, isActive, onUpdate }:
                         <span style={{ fontSize: '13px', color: '#1D1D1F', fontFamily: "'Raleway', system-ui, sans-serif" }}>{note.label}</span>
                       </label>
                     ))}
+                  </div>
+                  <div style={{ width: '280px', marginTop: '12px' }}>
+                    <p style={{ fontSize: '13px', fontWeight: 700, color: '#1D1D1F', fontFamily: "'Raleway', system-ui, sans-serif", marginBottom: '8px' }}>$ PRECIO (OPCIONAL)</p>
+                    <input type="text" inputMode="numeric" aria-label="Precio (opcional)" value={formatEntryPrice(price)} onChange={(e) => setPrice(priceDigits(e.target.value))} placeholder="$precio" className="w-full px-4 py-3 rounded-xl text-sm light-form" />
                   </div>
                 </fieldset>
               ) : (
