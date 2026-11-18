@@ -36,6 +36,8 @@ export default function Admin() {
   const [comuna, setComuna] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [stats, setStats] = useState<{ totalUsers: number; totalEvents: number; totalAttendees: number; totalInstagramClicks: number } | null>(null);
@@ -128,6 +130,25 @@ export default function Admin() {
       setSelectedUser(data);
       setLoadingDetail(false);
     }).catch(() => setLoadingDetail(false));
+  };
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+    const confirmed = window.confirm(
+      `¿Eliminar la cuenta de ${selectedUser.name} (${selectedUser.email})? Se borran sus eventos, inscripciones, publicaciones e imágenes. Esta acción no se puede deshacer.`,
+    );
+    if (!confirmed) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await adminApi.deleteUser(selectedUser.id);
+      setUsers((prev) => prev.filter((u) => u.id !== selectedUser.id));
+      setSelectedUser(null);
+    } catch (err) {
+      setDeleteError(apiErrorMessage(err, 'No se pudo eliminar la cuenta'));
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (accessGranted === null) {
@@ -346,6 +367,21 @@ export default function Admin() {
                   </div>
                 </div>
 
+                {selectedUser.id !== user?.id && (
+                  <div className="flex flex-col items-end gap-2 mb-4">
+                    <button
+                      type="button"
+                      onClick={handleDeleteUser}
+                      disabled={deleting}
+                      className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border transition-colors disabled:opacity-50"
+                      style={{ color: '#DC2626', borderColor: '#FCA5A5', backgroundColor: '#FFFFFF' }}
+                    >
+                      {deleting ? 'Eliminando…' : 'Eliminar usuario'}
+                    </button>
+                    {deleteError && <p className="text-xs" style={{ color: '#DC2626' }}>{deleteError}</p>}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                   {[
                     { label: 'Eventos', value: selectedUser.eventCount ?? 0, icon: Sparkles },
@@ -359,6 +395,34 @@ export default function Admin() {
                       <p className="text-[10px]" style={{ color: '#1D1D1F99' }}>{label}</p>
                     </div>
                   ))}
+                </div>
+
+                <div className="rounded-xl p-4 mb-6" style={{ backgroundColor: '#F8FAFC', border: '1px solid #E4EBFA' }}>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#1D1D1F99' }}>
+                    Datos del perfil
+                  </h3>
+                  <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                    {[
+                      { label: 'Nombre de empresa', value: selectedUser.name },
+                      { label: 'Categoría', value: selectedUser.category },
+                      { label: 'Giro de empresa', value: selectedUser.companyGiro },
+                      { label: 'Rut de empresa', value: selectedUser.companyRut },
+                      { label: 'Teléfono empresa', value: selectedUser.companyPhone },
+                      { label: 'Dirección', value: selectedUser.companyAddress },
+                      { label: 'Ciudad', value: selectedUser.city },
+                      { label: 'Comuna', value: selectedUser.comuna },
+                      { label: 'Instagram empresa', value: selectedUser.companyInstagram ? `@${selectedUser.companyInstagram}` : null },
+                      { label: 'Sitio web', value: selectedUser.website },
+                      { label: 'Nombre de administrador', value: [selectedUser.adminFirstName, selectedUser.adminLastName].filter(Boolean).join(' ') || null },
+                      { label: 'Rut administrador', value: selectedUser.adminRut },
+                      { label: 'Teléfono administrador', value: selectedUser.adminPhone },
+                    ].map(({ label, value }) => (
+                      <div key={label}>
+                        <dt className="text-[11px]" style={{ color: '#1D1D1F99' }}>{label}</dt>
+                        <dd className="text-sm font-medium break-words" style={{ color: value ? '#1D1D1F' : '#1D1D1F66' }}>{value || 'Sin dato'}</dd>
+                      </div>
+                    ))}
+                  </dl>
                 </div>
 
                 {selectedUser.instagramId && (
@@ -384,6 +448,39 @@ export default function Admin() {
                     </div>
                   </div>
                 )}
+
+                <div className="rounded-xl p-4 mb-6" style={{ backgroundColor: '#F8FAFC', border: '1px solid #E4EBFA' }}>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#1D1D1F99' }}>
+                    Publicaciones del micro-sitio ({(selectedUser.productCount ?? 0) + (selectedUser.serviceCount ?? 0) + (selectedUser.highlightCount ?? 0)})
+                  </h3>
+                  {(selectedUser.productCount ?? 0) + (selectedUser.serviceCount ?? 0) + (selectedUser.highlightCount ?? 0) === 0 ? (
+                    <p className="text-sm" style={{ color: '#1D1D1F99' }}>Sin productos, servicios ni destacados.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {[
+                        { label: 'Productos', count: selectedUser.productCount ?? 0, items: (selectedUser.businessProducts ?? []).map((p) => ({ id: p.id, text: p.name, sub: p.price != null ? `$${p.price.toLocaleString('es-CL')}` : null })) },
+                        { label: 'Servicios', count: selectedUser.serviceCount ?? 0, items: (selectedUser.businessServices ?? []).map((s) => ({ id: s.id, text: s.title, sub: s.tags?.join(', ') || null })) },
+                        { label: 'Destacados', count: selectedUser.highlightCount ?? 0, items: (selectedUser.businessHighlights ?? []).map((h) => ({ id: h.id, text: h.title, sub: null })) },
+                      ].map((group) => (
+                        <div key={group.label}>
+                          <p className="text-xs font-semibold mb-2" style={{ color: '#1D1D1F' }}>{group.label} ({group.count})</p>
+                          {group.items.length === 0 ? (
+                            <p className="text-xs" style={{ color: '#1D1D1F99' }}>Ninguno</p>
+                          ) : (
+                            <ul className="space-y-1.5 max-h-48 overflow-y-auto">
+                              {group.items.map((it) => (
+                                <li key={it.id} className="text-sm" style={{ color: '#1D1D1F' }}>
+                                  <span className="break-words">{it.text}</span>
+                                  {it.sub && <span className="block text-[10px]" style={{ color: '#1D1D1F99' }}>{it.sub}</span>}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {selectedUser.ownedEvents && selectedUser.ownedEvents.length > 0 && (

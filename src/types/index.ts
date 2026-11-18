@@ -39,6 +39,12 @@ export interface User {
   adminLastName?: string;
   adminRut?: string;
   adminPhone?: string;
+  businessProducts?: Array<{ id: string; name: string; price?: number | null; tag?: string | null }>;
+  businessServices?: Array<{ id: string; title: string; tags?: string[] }>;
+  businessHighlights?: Array<{ id: string; title: string }>;
+  productCount?: number;
+  serviceCount?: number;
+  highlightCount?: number;
 }
 
 export interface Event {
