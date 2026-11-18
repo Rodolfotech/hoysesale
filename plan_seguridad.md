@@ -4,8 +4,8 @@ Estado de la seguridad y la escalabilidad del proyecto. Cada tarea pendiente tie
 
 ## Estado actual
 
-- **Producción:** esquema de base de datos al día. El banner de cookies y las políticas nuevas ya se ven en `www.hoysesale.cl`; falta confirmar en Vercel el commit del deployment.
-- **Sin commit en `main`:** la analítica con Google Tag Manager (carga con consentimiento y CSP nueva). Lo anterior se subió con los Pull Requests #12 y #13.
+- **Producción:** falta la columna `events.news` (`prisma/production/pendiente.sql`), que debe aplicarse antes de desplegar; `yearRound`, `hoySeSale` y `featured` ya se aplicaron el 13-11-2026. El banner de cookies y las políticas nuevas ya se ven en `www.hoysesale.cl`; falta confirmar en Vercel el commit del deployment.
+- **Sin commit en `main`:** la analítica con Google Tag Manager (carga con consentimiento y CSP nueva), la ruta pública `GET /api/home`, las reglas de dónde publica cada empresa y los arreglos del panel de administración. Lo anterior se subió con los Pull Requests #12 y #13.
 - **Próximo paso:** rotar los secretos y subir lo pendiente con una rama y Pull Request.
 - **Protección de datos (Ley 21.719):** ver `plan.md`.
 - **Lecciones aplicadas:** ver "Errores que ya cometimos" en `README.md`.
@@ -19,7 +19,9 @@ Estado de la seguridad y la escalabilidad del proyecto. Cada tarea pendiente tie
 | Límite compartido | Login, registro, revisión de correo y contraseña, en Postgres. Si falla, deja pasar. Comprobado entre dos instancias |
 | Login justo con redes compartidas | Límite estricto por IP y correo: 20 personas tras una IP no se bloquearon |
 | Pestañas ocultas | Filtradas en el servidor, en HTML y API. Las que la categoría no tiene no se envían a nadie, tampoco al dueño. Ver como visitante solo cambia lo que ve el navegador del dueño |
-| Publicar eventos por categoría | El servidor responde 403 si la categoría no es de Turismo o Panoramas, o si el giro es de comercio funcional |
+| Publicar por categoría | El servidor responde 403 sin categoría válida, y también si la empresa marca una sección que no le corresponde (`allowedPlacements`). Experiencias y Novedades duran como máximo un año. Los avisos para la visita solo aceptan los 4 valores de la lista. Probado con una cuenta por categoría |
+| Ruta del inicio | `GET /api/home` es pública (declarada en `authorization.test.ts`) y solo envía datos que ya muestran los micro-sitios |
+| Panel de administración al cerrar sesión | Al cerrar sesión se borran de la pantalla las estadísticas, los usuarios y el detalle; la API ya respondía 401 |
 | Imágenes de servicios | WEBP, JPG o PNG hasta 2 MB, con revisión del contenido real; productos siguen solo en WEBP. Nombre (60), descripción (200) y etiquetas (8) validados en el servidor |
 | Reseñas | El conteo por estrella se calcula en el servidor; el dueño no puede reseñar su propio negocio |
 | Pruebas de autorización | En `pnpm test`: todas las rutas responden 401 sin sesión, salvo las declaradas públicas |

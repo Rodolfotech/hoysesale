@@ -3,7 +3,7 @@ import { BUSINESS_CATEGORIES, isBusinessCategory } from '@/constants/business';
 import { GIROS_SII, giroLabel } from '@/constants/giros';
 import { HIDEABLE_TABS, type HideableTab } from '@/lib/business';
 
-// Cada categoría tiene un tipo que define sus pestañas iniciales y si publica eventos.
+// Cada categoría tiene un tipo que define sus pestañas y dónde publica (allowedPlacements).
 // Si una categoría aparece en dos listas, manda la regla más reciente: servicios > productos > eventos.
 
 // Servicios con reserva de horas, turnos o cotización: muestran Servicios y no publican eventos.

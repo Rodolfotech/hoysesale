@@ -55,6 +55,7 @@ Lee `README.md` antes de cambiar nada. Este archivo resume lo que un agente debe
 
 - Inicio: `src/views/Home.tsx`. Bajo Eventos destacados, `src/features/home/HomeSections.tsx` con datos de `GET /api/home` (`src/server/services/home.ts`, reglas en `src/lib/home.ts`): Hoy se sale (eventos con `hoySeSale`), Experiencias todo el año (eventos con `yearRound`) y Lo nuevo en la región (publicaciones con `news` y, para completar, productos y servicios de locales con dirección). Cada sección se oculta si no tiene publicaciones.
 - Pantallas públicas: `src/views/BusinessPage.tsx`, `src/app/(main)/`. Vista del visitante: `BusinessSections` (orden de pestañas en `TAB_ORDER`), `AboutText`, `ReviewsSection`. Ver como visitante: `OwnerPreview`.
+- Formulario de publicación: `src/views/CreateEvent.tsx` (casillas de "¿Dónde se publicará?", "Para tu visita" con `VISIT_NOTES` y Publicaciones activas). Fechas de publicación: `${fecha}T00:00:00` y `T23:59:59`, nunca `new Date('AAAA-MM-DD')`.
 - Formulario del negocio: `src/features/business/BusinessForm.tsx` (URL, sitio web y botones de la barra).
 - Edición desde la página: `src/features/business/*Edit.tsx`, `OfferItemActions`, `TabVisibilitySwitch`, `ContactVisibility`. Disposición: `BusinessTabs` elige `SectionTabs` (dueño) o `BusinessSections` (visitante).
 - Perfil: `src/views/Profile.tsx`, `src/components/ui/ProfileField.tsx` (select agrupado y teléfono `+569`), `src/features/profile/CompleteProfileModal.tsx`, `src/lib/rut.ts`.

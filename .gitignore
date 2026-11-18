@@ -55,3 +55,4 @@ next-env.d.ts
 
 # Configuración local de OpenCode: contiene la clave de Context7
 opencode.json
+.claude/worktrees/
