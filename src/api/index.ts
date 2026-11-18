@@ -113,6 +113,7 @@ export const adminApi = {
   getUsers: (comuna?: string) =>
     api.get<User[]>(`/${A}/users`, { params: comuna ? { comuna } : {} }),
   getUserById: (id: string) => api.get<User>(`/${A}/users/${id}`),
+  deleteUser: (id: string) => api.delete(`/${A}/users/${id}`),
   getComunas: () => api.get<string[]>(`/${A}/comunas`),
   getStats: () => api.get<{ totalUsers: number; totalEvents: number; totalAttendees: number; totalInstagramClicks: number }>(`/${A}/stats`),
   trackInstagramClick: (eventId?: string) => api.post(`/${A}/instagram-click`, { eventId }),

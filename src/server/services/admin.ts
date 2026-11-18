@@ -1,5 +1,6 @@
 import { prisma } from '../db';
-import { notFound } from '../http';
+import { forbidden, notFound } from '../http';
+import { deleteAccount } from './users';
 
 // Cada acción del panel deja un registro en admin_audit_logs. Un fallo al auditar no bloquea la respuesta.
 async function logAudit(adminId: string, action: string, detail?: string, ip?: string) {
@@ -32,11 +33,35 @@ export async function getUserDetail(adminId: string, id: string, ip?: string) {
     where: { id },
     omit: { password: true, socialToken: true },
     include: {
-      _count: { select: { ownedEvents: true, registrations: true, instagramClicks: true } },
+      _count: {
+        select: {
+          ownedEvents: true,
+          registrations: true,
+          instagramClicks: true,
+          businessProducts: true,
+          businessServices: true,
+          businessHighlights: true,
+        },
+      },
       ownedEvents: {
         select: { id: true, title: true, slug: true, date: true, city: true },
         orderBy: { date: 'desc' },
         take: 10,
+      },
+      businessProducts: {
+        select: { id: true, name: true, price: true, tag: true },
+        orderBy: { sortOrder: 'asc' },
+        take: 20,
+      },
+      businessServices: {
+        select: { id: true, title: true, tags: true },
+        orderBy: { sortOrder: 'asc' },
+        take: 20,
+      },
+      businessHighlights: {
+        select: { id: true, title: true },
+        orderBy: { sortOrder: 'asc' },
+        take: 20,
       },
       registrations: {
         select: {
@@ -59,7 +84,20 @@ export async function getUserDetail(adminId: string, id: string, ip?: string) {
     eventCount: _count.ownedEvents,
     registrationCount: _count.registrations,
     instagramClickCount: _count.instagramClicks,
+    productCount: _count.businessProducts,
+    serviceCount: _count.businessServices,
+    highlightCount: _count.businessHighlights,
   };
+}
+
+// Borra una cuenta desde el panel (misma limpieza que el autoborrado). No se puede borrar la propia cuenta.
+export async function deleteUserAsAdmin(adminId: string, id: string, ip?: string) {
+  if (adminId === id) throw forbidden('No puedes eliminar tu propia cuenta desde el panel');
+  const user = await prisma.user.findUnique({ where: { id }, select: { name: true, email: true } });
+  if (!user) throw notFound('Usuario no encontrado');
+
+  await logAudit(adminId, 'DELETE_USER', `usuario: ${user.name} (${user.email})`, ip);
+  await deleteAccount(id);
 }
 
 export function trackInstagramClick(userId: string, eventId?: string) {
