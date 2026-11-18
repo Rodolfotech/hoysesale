@@ -17,6 +17,7 @@ import { useState } from 'react';
 
 const navLinks = [
   { to: '/', label: 'Eventos' },
+  { to: '/comercios', label: 'Comercios' },
   { to: '/#categorias', label: 'Categorias' },
   { to: '/#comunas', label: 'Comunas' },
 ];

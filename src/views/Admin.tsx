@@ -1,6 +1,7 @@
 'use client';
 
 import { apiErrorMessage } from '@/lib/api-error';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useState, useEffect } from 'react';
 import { adminApi, authApi } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -37,6 +38,7 @@ export default function Admin() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -134,16 +136,13 @@ export default function Admin() {
 
   const handleDeleteUser = async () => {
     if (!selectedUser) return;
-    const confirmed = window.confirm(
-      `¿Eliminar la cuenta de ${selectedUser.name} (${selectedUser.email})? Se borran sus eventos, inscripciones, publicaciones e imágenes. Esta acción no se puede deshacer.`,
-    );
-    if (!confirmed) return;
     setDeleting(true);
     setDeleteError('');
     try {
       await adminApi.deleteUser(selectedUser.id);
       setUsers((prev) => prev.filter((u) => u.id !== selectedUser.id));
       setSelectedUser(null);
+      setConfirmDeleteOpen(false);
     } catch (err) {
       setDeleteError(apiErrorMessage(err, 'No se pudo eliminar la cuenta'));
     } finally {
@@ -371,15 +370,27 @@ export default function Admin() {
                   <div className="flex flex-col items-end gap-2 mb-4">
                     <button
                       type="button"
-                      onClick={handleDeleteUser}
-                      disabled={deleting}
-                      className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border transition-colors disabled:opacity-50"
+                      onClick={() => { setDeleteError(''); setConfirmDeleteOpen(true); }}
+                      className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border transition-colors"
                       style={{ color: '#DC2626', borderColor: '#FCA5A5', backgroundColor: '#FFFFFF' }}
                     >
-                      {deleting ? 'Eliminando…' : 'Eliminar usuario'}
+                      Eliminar usuario
                     </button>
-                    {deleteError && <p className="text-xs" style={{ color: '#DC2626' }}>{deleteError}</p>}
                   </div>
+                )}
+                {selectedUser && (
+                  <ConfirmDialog
+                    isOpen={confirmDeleteOpen}
+                    title="¿Estás seguro?"
+                    message={`Se eliminará la cuenta de ${selectedUser.name} (${selectedUser.email}) junto con sus eventos, inscripciones, publicaciones e imágenes. Esta acción no se puede deshacer.`}
+                    confirmLabel="Aceptar"
+                    cancelLabel="Cancelar"
+                    danger
+                    loading={deleting}
+                    error={deleteError}
+                    onConfirm={handleDeleteUser}
+                    onCancel={() => setConfirmDeleteOpen(false)}
+                  />
                 )}
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">

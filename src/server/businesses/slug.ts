@@ -2,7 +2,7 @@ import type { prisma as prismaClient } from '../db';
 
 // Rutas del sitio que no pueden usarse como slug de negocio (hoysesale.cl/<slug>).
 export const RESERVED_SLUGS = new Set([
-  'eventos', 'categorias', 'comunas', 'login', 'register', 'registro', 'profile', 'perfil',
+  'eventos', 'categorias', 'comunas', 'comercios', 'login', 'register', 'registro', 'profile', 'perfil',
   'create-event', 'forgot-password', 'reset-password', 'privacidad', 'terminosdelservicio',
   'eliminacion-datos', 'politica-cookies', 'panel-g9k2x', 'admin', 'api', 'auth', 'social', 'uploads', 'health', 'negocios',
 ]);
