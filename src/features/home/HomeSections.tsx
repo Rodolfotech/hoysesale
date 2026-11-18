@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { formatEntryPrice, parseEntryPrice } from '@/lib/event-price';
+import { NO_ENTRY_TYPE, formatEntryPrice, parseEntryPrice } from '@/lib/event-price';
 import { EventDetailModal } from '../events/EventDetailModal';
 import { FeaturedEventCard } from '../events/FeaturedEventCard';
 import type { Event } from '../../types';
@@ -18,8 +18,10 @@ const clp = (n: number) => `$${n.toLocaleString('es-CL')}`;
 
 // El valor de entrada se guarda en address ("$80.000"); sin valor, el evento es gratis (igual que FeaturedEventCard).
 // Si el tipo de entrada es Cover o Consumo mínimo, se muestra junto al valor.
-function entryInfo(e: HomeEvent): { free: boolean; text: string } {
+// Una publicación de local (SIN_ENTRADA) muestra solo su precio, o nada.
+function entryInfo(e: HomeEvent): { free: boolean; text: string } | null {
   const price = formatEntryPrice(parseEntryPrice(e.address));
+  if (e.entryType === NO_ENTRY_TYPE) return price ? { free: false, text: price } : null;
   const kind = e.entryType && e.entryType !== 'GRATIS' ? ENTRY_TYPE_LABELS[e.entryType] : null;
   if (!price && !kind) return { free: true, text: 'Gratis' };
   return { free: false, text: [kind, price].filter(Boolean).join(' · ') };
@@ -138,9 +140,10 @@ function ExperienceCard({ event, onOpen }: { event: HomeExperience; onOpen: () =
         {event.publicationEndDate && <p className="mt-3 text-sm" style={{ color: '#374151' }}>Disponible hasta el {fmt(event.publicationEndDate, { day: 'numeric', month: 'long', year: 'numeric' })}</p>}
         <VisitNotes notes={event.notes} />
         <div className="mt-auto pt-4 flex items-end justify-between gap-2">
-          {entry.free
-            ? <span className="rounded-full px-2.5 py-0.5 text-sm font-semibold" style={{ backgroundColor: '#ECFDF5', color: '#047857' }}>Gratis</span>
-            : <span className="text-base font-bold" style={{ color: '#111827' }}>{entry.text}</span>}
+          {!entry ? <span />
+            : entry.free
+              ? <span className="rounded-full px-2.5 py-0.5 text-sm font-semibold" style={{ backgroundColor: '#ECFDF5', color: '#047857' }}>Gratis</span>
+              : <span className="text-base font-bold" style={{ color: '#111827' }}>{entry.text}</span>}
           <button type="button" onClick={onOpen} className="rounded-lg px-5 py-2.5 text-sm font-semibold text-white cursor-pointer hover:opacity-90" style={{ backgroundColor: '#047857' }}>Ver detalle</button>
         </div>
       </div>

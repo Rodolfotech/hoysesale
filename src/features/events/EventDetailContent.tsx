@@ -18,6 +18,7 @@ import {
   Ticket,
 } from 'lucide-react';
 import { SocialPostMedia } from '../social/SocialPostMedia';
+import { NO_ENTRY_TYPE } from '@/lib/event-price';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -105,6 +106,8 @@ export function EventDetailContent({ slug, initialEvent }: Props) {
 
   const priceFromAddress = event.address && !event.address.startsWith('http') ? event.address : null;
   const isFree = !event.price && !priceFromAddress;
+  // Publicación de un local: sin "Gratis" ni "Entrada"; solo el precio, si lo puso.
+  const noEntry = event.entryType === NO_ENTRY_TYPE;
   const slides = [
     ...(event.imageUrl ? [{ type: 'image' as const, url: event.imageUrl }] : []),
     ...((event.socialFeed || []).filter(p => p.media_url).map(p => ({ type: 'post' as const, post: p }))),
@@ -130,7 +133,7 @@ export function EventDetailContent({ slug, initialEvent }: Props) {
                 {event.category.name}
               </span>
             )}
-            {isFree ? (
+            {noEntry ? null : isFree ? (
               <span className="text-xs font-medium px-3 py-1 rounded-full" style={{ backgroundColor: '#DCFCE7', color: '#16A34A' }}>
                 Gratis
               </span>
@@ -182,10 +185,10 @@ export function EventDetailContent({ slug, initialEvent }: Props) {
                 </div>
               </div>
             )}
-            <div className="flex items-start gap-2.5">
+            {(!noEntry || priceFromAddress) && <div className="flex items-start gap-2.5">
               <Ticket className="w-4 h-4 shrink-0 mt-0.5" style={{ color: C.blue }} />
               <div>
-                <p style={T.label}>Entrada</p>
+                <p style={T.label}>{noEntry ? 'Precio' : 'Entrada'}</p>
                 <p className="mt-0.5" style={T.value}>
                   {isFree
                     ? 'Entrada Liberada'
@@ -194,7 +197,7 @@ export function EventDetailContent({ slug, initialEvent }: Props) {
                       : (event.price ? `$${event.price.toLocaleString('es-CL')}` : 'Evento de pago')}
                 </p>
               </div>
-            </div>
+            </div>}
           </div>
 
           {/* Instagram */}

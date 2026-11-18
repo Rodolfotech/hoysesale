@@ -59,6 +59,7 @@ export interface Event {
   hoySeSale?: boolean; // Hoy se sale
   news?: boolean; // Lo nuevo en la región
   amenities?: string[] | null; // avisos para la visita (VISIT_NOTES)
+  entryType?: string | null; // SIN_ENTRADA: publicación de un local, sin "Gratis" ni "Entrada"
   price?: number;
   imageUrl?: string;
   mapEmbedUrl?: string | null; // solo en el detalle del evento
@@ -122,6 +123,7 @@ export interface CreateEventPayload {
   hoySeSale?: boolean; // Hoy se sale
   news?: boolean; // Lo nuevo en la región
   amenities?: string[]; // avisos para la visita (VISIT_NOTES)
+  entryType?: string | null;
 }
 
 export interface SocialConnectPayload {
