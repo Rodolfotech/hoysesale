@@ -8,7 +8,7 @@ Las tareas de seguridad técnica (rotar secretos, límites, escalabilidad) está
 
 - **Producción:** el banner de cookies y la Política de privacidad versión 2.0 se ven en `www.hoysesale.cl` (revisado el 11-11-2026). Falta confirmar en Vercel que el deployment corresponde al último commit de `main`.
 - **Sin commit en `main`:** la analítica con Google Tag Manager (Política de privacidad 2.1 y CSP), el texto legal del aviso de cookies, las secciones nuevas del inicio, las casillas de "¿Dónde se publicará?", los cambios al formulario de eventos y los arreglos del panel de administración. Lo anterior se subió a `main` con los Pull Requests #12 y #13; falta confirmar en Vercel el commit del deployment.
-- **Base de datos de producción:** `events.yearRound`, `hoySeSale` y `featured` aplicadas el 13-11-2026. **Falta `events.news`** (`prisma/production/pendiente.sql`), que debe aplicarse antes de desplegar.
+- **Base de datos de producción:** `events.yearRound`, `hoySeSale` y `featured` aplicadas el 13-11-2026, y `events.news` el 17-11-2026. No hay SQL pendiente.
 - **Próximo paso:** completar los datos del responsable (tarea 1) antes del 1 de diciembre de 2026.
 
 ## Hecho
@@ -50,7 +50,7 @@ Las tareas de seguridad técnica (rotar secretos, límites, escalabilidad) está
    *Criterio:* la sección 1 de `/privacidad` muestra los cuatro datos.
 
 2. **Confirmar el despliegue y subir lo pendiente.**
-   El banner y las políticas ya se ven en producción. Falta aplicar en Supabase la columna `events.news` (`prisma/production/pendiente.sql`), subir con una rama `feature/` lo que sigue sin commit en `main` (ver Estado actual) y verificar en Vercel el commit del deployment.
+   El banner y las políticas ya se ven en producción. La columna `events.news` ya está en Supabase (17-11-2026). Falta subir con una rama `feature/` lo que sigue sin commit en `main` (ver Estado actual) y verificar en Vercel el commit del deployment.
    *Criterio:* el commit del deployment de producción coincide con `main`. Con rechazo de cookies no hay pedidos a `google.com`, el mapa carga sin avisos de CSP después de aceptar, y el registro con Google termina en el perfil.
 
 3. **Aceptar los acuerdos de tratamiento de datos (DPA) de los proveedores (lo hace el dueño del proyecto).**

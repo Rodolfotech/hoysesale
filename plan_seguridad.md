@@ -4,7 +4,7 @@ Estado de la seguridad y la escalabilidad del proyecto. Cada tarea pendiente tie
 
 ## Estado actual
 
-- **Producción:** falta la columna `events.news` (`prisma/production/pendiente.sql`), que debe aplicarse antes de desplegar; `yearRound`, `hoySeSale` y `featured` ya se aplicaron el 13-11-2026. El banner de cookies y las políticas nuevas ya se ven en `www.hoysesale.cl`; falta confirmar en Vercel el commit del deployment.
+- **Producción:** sin SQL pendiente: `events.news` se aplicó el 17-11-2026 y `yearRound`, `hoySeSale` y `featured`, el 13-11-2026. El banner de cookies y las políticas nuevas ya se ven en `www.hoysesale.cl`; falta confirmar en Vercel el commit del deployment.
 - **Sin commit en `main`:** la analítica con Google Tag Manager (carga con consentimiento y CSP nueva), la ruta pública `GET /api/home`, las reglas de dónde publica cada empresa y los arreglos del panel de administración. Lo anterior se subió con los Pull Requests #12 y #13.
 - **Próximo paso:** rotar los secretos y subir lo pendiente con una rama y Pull Request.
 - **Protección de datos (Ley 21.719):** ver `plan.md`.

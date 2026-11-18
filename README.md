@@ -310,7 +310,7 @@ Un solo proyecto con Root Directory en la raíz y framework Next.js. Variables d
 - `plan.md`: pendientes de la Ley 21.719 y del producto, con criterios de éxito.
 - `plan_seguridad.md`: estado de seguridad y escalabilidad, con criterios de éxito.
 - `AGENTS.md`: reglas para agentes.
-- `prisma/production/pendiente.sql`: último SQL manual para producción. Hoy está **pendiente** la columna `events.news`; `yearRound`, `hoySeSale` y `featured` ya se aplicaron el 13-11-2026.
+- `prisma/production/pendiente.sql`: último SQL manual para producción. Hoy no hay nada pendiente: `events.news` se aplicó el 17-11-2026 y `yearRound`, `hoySeSale` y `featured`, el 13-11-2026.
 - `SPEC.md` y `PLAN.md` no están en este repositorio: están en el backend anterior (`../../eventos/backend-evento/`). `SPEC.md` tiene un resumen de lo que se hizo en esta app.
 
 ## Seguridad en producción
