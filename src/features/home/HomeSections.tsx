@@ -160,10 +160,10 @@ export function ExperiencesSection({ events }: { events: HomeExperience[] }) {
       <div className="max-w-7xl mx-auto px-4 py-12">
         <SectionHeader
           badge="Actividades" badgeColor={{ bg: '#ECFDF5', text: '#047857' }} title="Experiencias todo el año" subtitle="Tours, termas y rutas de las empresas de turismo"
-          aside={events.length > 3 ? <MoreButton open={all} onClick={() => setAll((v) => !v)} label="Ver todas las actividades" /> : undefined}
+          aside={events.length > 4 ? <MoreButton open={all} onClick={() => setAll((v) => !v)} label="Ver todas las actividades" /> : undefined}
         />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {(all ? events : events.slice(0, 3)).map((e) => <ExperienceCard key={e.id} event={e} onOpen={() => setOpen(e.slug)} />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {(all ? events : events.slice(0, 4)).map((e) => <ExperienceCard key={e.id} event={e} onOpen={() => setOpen(e.slug)} />)}
         </div>
       </div>
       {open && <EventDetailModal slug={open} onClose={() => setOpen(null)} />}
