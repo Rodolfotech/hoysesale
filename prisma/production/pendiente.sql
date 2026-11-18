@@ -1,6 +1,6 @@
--- PENDIENTE en PRODUCCIÓN (Supabase). Aplicar ANTES de desplegar el commit con la casilla "Lo nuevo en la región":
--- sin esta columna fallan la creación y el listado de eventos.
--- Ya aplicado el 13-11-2026: "yearRound", "hoySeSale" y "featured"; y el 30-10-2026, las columnas de negocio.
+-- Último SQL manual para PRODUCCIÓN (Supabase). Estado: APLICADO el 17-11-2026 (verificado: news | boolean | false | NO).
+-- Antes: "yearRound", "hoySeSale" y "featured" el 13-11-2026; las columnas de negocio el 30-10-2026.
+-- Si se agrega otra columna, reemplaza este contenido y marca el estado como PENDIENTE.
 
 BEGIN;
 

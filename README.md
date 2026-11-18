@@ -86,12 +86,12 @@ src/
     └── storage/              # Puerto de almacenamiento: local o Supabase
 prisma/
 ├── schema.prisma · migrations/ · seed.ts
-└── production/pendiente.sql  # Último SQL manual para producción (ya aplicado)
+└── production/pendiente.sql  # Último SQL manual para producción (dice si está aplicado o pendiente)
 ```
 
 ### Rutas de API principales
 
-`/api/auth/*` (login, register, me, logout, google, instagram, forgot-password, reset-password) · `/api/users/*` (perfil, eliminar cuenta) · `/api/events/*` (listado, detalle, medios, interacciones) · `/api/attendees/*` · `/api/categories` · `/api/businesses/*` (micro-sitio, productos, servicios, destacados, reseñas, `check-slug`, `me/about-images`, `me/item-image`) · `/api/social/*` (Instagram, cron `refresh-images`) · `/api/control-panel-7f3a/*` (admin) · `/api/health`.
+`/api/auth/*` (login, register, me, logout, google, instagram, forgot-password, reset-password) · `/api/users/*` (perfil, eliminar cuenta) · `/api/events/*` (listado, detalle, medios, interacciones) · `/api/attendees/*` · `/api/categories` · `/api/businesses/*` (micro-sitio, productos, servicios, destacados, reseñas, `check-slug`, `me/about-images`, `me/item-image`) · `/api/social/*` (Instagram, cron `refresh-images`) · `/api/home` (público: secciones del inicio) · `/api/control-panel-7f3a/*` (admin) · `/api/health`.
 
 ## Reglas de datos (importante)
 
@@ -116,7 +116,18 @@ prisma/
 
   Las pestañas que no corresponden no las ve nadie, tampoco el dueño, y el servidor no envía su contenido. El dueño ve las mismas pestañas que el visitante, edita su contenido y puede ocultarlas con su interruptor; una pestaña que ocultó la sigue viendo él para poder volver a mostrarla.
 
-- **Quién publica eventos** (`canPublishEvents`): solo las 8 categorías de eventos, salvo con un giro de comercio funcional (servicios de barrio y ferreterías). Servicios y productos no publican eventos. El servidor responde 403 al crear un evento sin permiso, el formulario lo avisa y el botón Publicar evento del navbar aparece deshabilitado (en escritorio el motivo se ve al pasar el mouse; en celular, bajo el botón). Una categoría antigua o vacía no publica.
+- **Quién publica** (`canPublishEvents`): todas las empresas con una categoría válida. Una categoría antigua o vacía no publica: el servidor responde 403, el formulario lo avisa y el botón Publicar evento del navbar aparece deshabilitado (en escritorio el motivo se ve al pasar el mouse; en celular, bajo el botón). Hasta el 13-11-2026 solo publicaban Turismo y Panoramas sin giro de comercio funcional.
+- **Dónde se publica** (`allowedPlacements` en `src/lib/business-rules.ts`): casillas independientes en "¿Dónde se publicará?", al menos una. Cada empresa ve solo las suyas y el servidor rechaza las demás (403 "Tu empresa no puede publicar en …").
+
+  | Empresa | Eventos destacados | Hoy se sale | Experiencias todo el año | Novedades |
+  |---|---|---|---|---|
+  | Panoramas (sin giro de comercio funcional) | ✓ | ✓ | — | — |
+  | Turismo (sin giro de comercio funcional) | ✓ | ✓ | ✓ | — |
+  | Servicios, productos y giros de comercio funcional | — | — | ✓ | ✓ |
+
+  Columnas en `events`: `featured`, `hoySeSale`, `yearRound` y `news`. Eventos destacados y Hoy se sale piden fecha, hora y categoría; "Visible hasta" es la fecha del evento. Experiencias y Novedades no las piden; "Visible hasta" se elige, máximo un año después de "Visible desde" (por defecto un año en Experiencias y 30 días en Novedades). Los listados de eventos no muestran lo que va solo a Novedades.
+- **Formulario de publicación** (`src/views/CreateEvent.tsx`): "Visible desde" parte en la fecha de hoy (Chile) y no acepta días pasados. Si falta algo, el aviso nombra los campos ("Falta completar la fecha y la categoría."), los marca en rojo y se achica al completarlos. Popovers en Fecha, Hora, Comuna, Visible desde, Visible hasta y Categoría. Las empresas que publican Novedades no ven "El evento es gratuito": ven "Para tu visita" con ¡Te esperamos!, Sin reserva, Por orden de llegada y Ven a conocernos (`VISIT_NOTES`, guardados en `events.amenities`). Lo mismo al editar en Publicaciones activas.
+- **Fechas de publicación:** se guardan desde las 00:00 de "Visible desde" hasta las 23:59 de "Visible hasta", en hora de Chile. Con `new Date('2026-11-13')` quedaban a las 21:00 del día anterior.
 - **Vaciar un campo opcional:** el formulario envía `null`. Un `undefined` no se guarda y deja el valor anterior. Los campos obligatorios no se pueden vaciar.
 - **Formato de datos:**
   - Teléfono: `+569` + 8 dígitos; el primer dígito es de 3 a 9. En el perfil, `+569` va fijo en un campo y al lado los 8 dígitos con un espacio cada 4 (`8765 4321`). Un teléfono guardado con otro formato se muestra vacío.
@@ -127,7 +138,12 @@ prisma/
   - Valor de entrada de un evento: solo números, se muestra y guarda como `$5.000` (`src/lib/event-price.ts`). Se guarda en `events.address`, que otro formulario usa como dirección, por eso solo el formulario obliga a números.
 - **Imagen de un evento:** al editarlo se puede quitar con la X y subir otra, o arrastrarla. No se puede guardar sin imagen, porque desaparecería de Publicaciones activas.
 - **Mapa del evento:** el detalle muestra un mapa de Google con el lugar del evento, el enlace Cómo llegar del negocio, su dirección o la comuna, en ese orden (`src/lib/map-embed.ts`). Solo se carga con consentimiento de cookies. Si el dueño ocultó Contáctanos, no se usa su dirección.
-- **Eventos vigentes:** los listados públicos y la página del negocio muestran solo eventos publicados cuya fecha no pasó (`activeEvents()`). Un evento sigue visible hasta que termina su día en Chile, porque no tiene hora de término.
+- **Eventos vigentes:** los listados públicos y la página del negocio muestran solo eventos publicados cuya fecha no pasó (`activeEvents()`). Un evento sigue visible hasta que termina su día en Chile, porque no tiene hora de término. Las Experiencias todo el año y las Novedades no dependen de su fecha: se ven hasta su fecha de término.
+- **Inicio** (`src/views/Home.tsx`): bajo Eventos destacados, tres secciones con datos de `GET /api/home` (`src/server/services/home.ts`, reglas en `src/lib/home.ts`). Cada una se oculta si no tiene publicaciones.
+  - **Hoy se sale:** eventos con `hoySeSale`, en pestañas Hoy, Este finde (viernes a domingo), Próxima semana y Más adelante, con la fecha de Chile. Abre en la primera pestaña con eventos y usa la tarjeta de Eventos destacados (`FeaturedEventCard`).
+  - **Experiencias todo el año:** eventos con `yearRound`. Muestran los días que atiende la empresa según su horario (si no lo ocultó), "Disponible hasta" y los avisos para la visita.
+  - **Lo nuevo en la región:** primero las Novedades (`news`), que abren su detalle; después completa con el último producto o servicio de locales con micro-sitio, dirección y la pestaña visible. Una por empresa.
+  - Eventos destacados y Próximos eventos muestran solo eventos con `featured` (`GET /api/events?type=destacado`).
 - **Servicios:** tarjetas con imagen, nombre (hasta 60 caracteres), descripción (hasta 200), hasta 8 etiquetas de texto libre (20 caracteres cada una, con sugerencias) y botón Cotizar por WhatsApp. El formulario Agregar servicio (`ServiceFields`, `ServiceImageDrop`) muestra contadores y un recuadro para arrastrar la imagen.
 - **Imágenes:** logo JPG, PNG, WEBP o GIF (se recomienda WEBP) y máximo 10 KB; portada JPG, JPEG o WEBP, 1200 × 400 px y máximo 90 KB; fotos de Nosotros JPG, PNG o WEBP, máximo 4 MB y 3 fotos; imagen de producto solo WEBP e imagen de servicio WEBP (recomendado), JPG o PNG, ambas de máximo 2 MB (subida propia en `/api/businesses/me/item-image`, con `?type=services` para servicios, que también revisa el contenido real del archivo). Las imágenes de eventos, logo, portada, productos y servicios se pueden arrastrar sobre la imagen o sobre el botón de subir.
 
@@ -191,7 +207,7 @@ El dueño también puede eliminar la página desde el micro-sitio. Se borra solo
 
 La Ley N° 21.719 entra en vigencia el 1 de diciembre de 2026. Lo pendiente para cumplirla está en `plan.md`.
 
-- **Banner de cookies** (`CookieBanner`): Aceptar, Rechazar y Configurar, con el mismo peso. Nada opcional se carga antes de decidir. La elección se guarda en `localStorage` (`hss_consent`) con versión y fecha, y se vuelve a preguntar si cambia `COOKIE_POLICY_VERSION` (`src/lib/consent.ts`) o pasan 12 meses.
+- **Banner de cookies** (`CookieBanner`): Aceptar, Rechazar y Configurar, con el mismo peso. El texto es genérico y legal (finalidad, quién recibe los datos, transferencia a Estados Unidos y retiro del consentimiento, arts. 12 y 14 ter); el detalle técnico de cada cookie está solo en la Política de privacidad. Nada opcional se carga antes de decidir. La elección se guarda en `localStorage` (`hss_consent`) con versión y fecha, y se vuelve a preguntar si cambia `COOKIE_POLICY_VERSION` (`src/lib/consent.ts`) o pasan 12 meses.
 - **Cookies opcionales:** dos grupos que se aceptan por separado: Mapas (Google Maps) y Analítica (Google Tag Manager, que carga Google Analytics y Microsoft Clarity). Las cookies que existen están en `src/lib/cookie-list.ts`, que usan el panel del banner y la sección Cookies de la política. Un servicio externo nuevo que instale cookies debe pasar por el consentimiento, agregarse a esa lista y a la CSP.
 - **Retirar el consentimiento:** "Configurar cookies" en el pie de cada página y en la política.
 - **Analítica** (`src/components/shared/Analytics.tsx`, `src/lib/analytics.ts`): contenedor `GTM-5FGKKZNT` (se puede cambiar con `NEXT_PUBLIC_GTM_ID`). Se carga solo en producción y solo si el visitante aceptó Analítica, con el modo de consentimiento de Google (analítica sí, publicidad nunca). Si retira el consentimiento, se avisa a Google, se borran las cookies `_ga*`, `_clck` y `_clsk` del sitio y la página se recarga sin GTM. Google Analytics 4 (propiedad `hoysesale.cl`, ID de medición `G-V0KEF05R6C`) y Clarity (proyecto `zd2hmz2scd`, enmascaramiento estricto) se configuran como etiquetas en el panel de GTM, con el activador Initialization – All Pages: cada etiqueta nueva necesita su dominio en la CSP, sus cookies en `cookie-list.ts` y la Política de privacidad actualizada.
@@ -279,10 +295,13 @@ Un solo proyecto con Root Directory en la raíz y framework Next.js. Variables d
 21. **Rediseño del visitante que cambia el editor.** El nuevo diseño de una página se aplicó también al dueño y hubo que separarlo. Cambia `BusinessSections` (visitante) sin tocar `SectionTabs` (editor), salvo que se pida.
 22. **Contar sobre datos recortados.** El servidor envía solo las 30 reseñas más recientes; contar estrellas con esa lista da barras falsas. Los totales se calculan en el servidor (`stats.ratingCounts`).
 23. **Comparar la sesión a mano.** Un control que revisa `user.slug === slug` sigue visible en Ver como visitante. Usa `useIsOwner`.
+24. **Fecha sin hora.** `new Date('2026-11-13')` es medianoche UTC: en Chile son las 21:00 del día anterior. Un "Visible hasta" así ocultaba el evento la noche antes. Usa `` new Date(`${fecha}T00:00:00`) `` o `T23:59:59`.
+25. **`pnpm dev` con el cliente de Prisma anterior.** Después de agregar una columna, el servidor que ya estaba corriendo no la conoce y responde "Error interno del servidor" al crear eventos. Reinícialo (borrando `.next`).
+26. **Mensaje de error que no se borra.** "Completa todos los campos obligatorios" quedaba en pantalla aunque ya estuviera todo completo. Calcula el aviso con el estado actual y nombra los campos que faltan.
 
 ## Pruebas
 
-- `pnpm test`: 124 pruebas. Cubren horarios, utilidades, filtrado de pestañas ocultas, permisos, RUT (incluido el rango de empresa y el formato al escribir), consentimiento de cookies (mapas y analítica por separado), valor de entrada, URL del mapa y reglas por categoría.
+- `pnpm test`: 128 pruebas. Cubren horarios, utilidades, filtrado de pestañas ocultas, permisos, RUT (incluido el rango de empresa y el formato al escribir), consentimiento de cookies (mapas y analítica por separado), valor de entrada, URL del mapa, reglas por categoría (incluido dónde publica cada empresa) y las pestañas de fecha de Hoy se sale.
 - `src/app/api/authorization.test.ts` recorre todas las rutas de la API. Una ruta nueva debe responder 401 sin sesión, salvo que se declare pública en esa prueba. También comprueba el panel de administración, los datos de otros usuarios y el token de recuperación de contraseña.
 - Las pruebas de navegador con Playwright se hicieron fuera del repositorio. Agregarlas sigue pendiente.
 
@@ -291,7 +310,7 @@ Un solo proyecto con Root Directory en la raíz y framework Next.js. Variables d
 - `plan.md`: pendientes de la Ley 21.719 y del producto, con criterios de éxito.
 - `plan_seguridad.md`: estado de seguridad y escalabilidad, con criterios de éxito.
 - `AGENTS.md`: reglas para agentes.
-- `prisma/production/pendiente.sql`: último SQL manual aplicado en producción.
+- `prisma/production/pendiente.sql`: último SQL manual para producción. Hoy no hay nada pendiente: `events.news` se aplicó el 17-11-2026 y `yearRound`, `hoySeSale` y `featured`, el 13-11-2026.
 - `SPEC.md` y `PLAN.md` no están en este repositorio: están en el backend anterior (`../../eventos/backend-evento/`). `SPEC.md` tiene un resumen de lo que se hizo en esta app.
 
 ## Seguridad en producción

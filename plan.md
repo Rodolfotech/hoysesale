@@ -7,14 +7,15 @@ Las tareas de seguridad técnica (rotar secretos, límites, escalabilidad) está
 ## Estado actual
 
 - **Producción:** el banner de cookies y la Política de privacidad versión 2.0 se ven en `www.hoysesale.cl` (revisado el 11-11-2026). Falta confirmar en Vercel que el deployment corresponde al último commit de `main`.
-- **Sin commit en `main`:** la analítica con Google Tag Manager (aviso de cookies, Política de privacidad 2.1 y CSP). Lo anterior se subió a `main` con los Pull Requests #12 y #13; falta confirmar en Vercel el commit del deployment. No requiere cambios en la base de datos.
+- **Sin commit en `main`:** la analítica con Google Tag Manager (Política de privacidad 2.1 y CSP), el texto legal del aviso de cookies, las secciones nuevas del inicio, las casillas de "¿Dónde se publicará?", los cambios al formulario de eventos y los arreglos del panel de administración. Lo anterior se subió a `main` con los Pull Requests #12 y #13; falta confirmar en Vercel el commit del deployment.
+- **Base de datos de producción:** `events.yearRound`, `hoySeSale` y `featured` aplicadas el 13-11-2026, y `events.news` el 17-11-2026. No hay SQL pendiente.
 - **Próximo paso:** completar los datos del responsable (tarea 1) antes del 1 de diciembre de 2026.
 
 ## Hecho
 
 | Tarea | Resultado |
 |---|---|
-| Banner de cookies (art. 12) | Aceptar y Rechazar con el mismo peso, panel "Configurar" con la lista de cookies. Nada opcional se carga antes de decidir |
+| Banner de cookies (art. 12) | Aceptar y Rechazar con el mismo peso, panel "Configurar" por finalidad (Necesarias, Mapas, Analítica). Texto genérico y legal: finalidad, quién recibe los datos, transferencia a Estados Unidos y retiro del consentimiento; el detalle técnico queda en la Política de privacidad. Nada opcional se carga antes de decidir |
 | Retirar el consentimiento | "Configurar cookies" en el pie de cada página y en la sección Cookies. Se vuelve a preguntar si cambia la versión o pasan 12 meses |
 | Google Maps con consentimiento | Sin permiso no se pide nada a Google. Aviso con "Aceptar y ver mapa" y "Abrir en Google Maps" |
 | Política de privacidad (art. 14 ter) | 13 secciones que cubren las letras a a l, con versión y fecha |
@@ -29,9 +30,12 @@ Las tareas de seguridad técnica (rotar secretos, límites, escalabilidad) está
 | Aviso "Completa tu perfil" | Modal con progreso y un botón por dato pendiente que lleva al campo. Popover en cada campo obligatorio |
 | Guardado parcial del perfil | Se guarda lo completo aunque falten datos; lo escrito se valida y el aviso indica cuántos faltan |
 | Categoría y giro | Selects agrupados: 24 categorías y 65 giros del SII. El servidor rechaza valores fuera de las listas |
-| Tipo de categoría | Cada categoría es de servicios (9), productos (7) o eventos (8). Solo publican eventos Turismo y Panoramas. Las pestañas del micro-sitio las define el tipo, para el dueño y los visitantes |
+| Tipo de categoría | Cada categoría es de servicios (9), productos (7) o eventos (8). Las pestañas del micro-sitio las define el tipo, para el dueño y los visitantes |
+| Quién publica y dónde | Publican todas las categorías válidas. Turismo y Panoramas: Eventos destacados y Hoy se sale (Turismo además Experiencias todo el año). Servicios, productos y comercio funcional: Experiencias todo el año y Novedades. Validado en el servidor y probado con una cuenta por categoría |
+| Inicio | Bajo Eventos destacados: Hoy se sale (Hoy, Este finde, Próxima semana y Más adelante), Experiencias todo el año y Lo nuevo en la región, con datos reales. Cada sección se oculta si está vacía |
+| Formulario de eventos | Visible desde parte hoy; Visible hasta es la fecha del evento (o se elige, máximo un año, en Experiencias y Novedades). El aviso nombra los campos que faltan y los marca. Popovers en fecha, hora, visibilidad y categoría. "Para tu visita" (¡Te esperamos!, Sin reserva, Por orden de llegada, Ven a conocernos) para las empresas que publican Novedades |
 | RUT y teléfono | RUT de empresa desde 50.000.000 y con formato `74.000.888-5` al escribir. Teléfono con `+569` fijo y 8 dígitos (`8765 4321`); en Contáctanos se muestra `+569 3333 1333` |
-| Menú de navegación | Crear página entre Publicar evento y Cerrar sesión. Publicar evento deshabilitado para las categorías que no publican eventos |
+| Menú de navegación | Crear página entre Publicar evento y Cerrar sesión. Publicar evento deshabilitado solo sin categoría válida |
 | Agregar servicio | Nombre (60), descripción (200), hasta 8 etiquetas con sugerencias e imagen WEBP, JPG o PNG de 2 MB con popover que sugiere WEBP. El servidor aplica los mismos límites |
 | Cabecera del micro-sitio | Logo con borde blanco (marco redondo y cuadrado) y el nombre del negocio debajo |
 | Micro-sitio para visitantes | Una sola página: Nosotros (con Ver más) y la sección principal a la izquierda; Horario, Contacto y ubicación (con Cómo llegar) y Reseñas a la derecha. Reseñas con promedio, barras por estrella y Escribir una reseña. Paginación de servicios siempre visible. El editor del dueño sigue en pestañas |
@@ -46,7 +50,7 @@ Las tareas de seguridad técnica (rotar secretos, límites, escalabilidad) está
    *Criterio:* la sección 1 de `/privacidad` muestra los cuatro datos.
 
 2. **Confirmar el despliegue y subir lo pendiente.**
-   El banner y las políticas ya se ven en producción. Falta verificar en Vercel el commit del deployment, y subir con una rama `fix/` lo que sigue sin commit en `main` (ver Estado actual). No requiere cambios en la base de datos.
+   El banner y las políticas ya se ven en producción. La columna `events.news` ya está en Supabase (17-11-2026). Falta subir con una rama `feature/` lo que sigue sin commit en `main` (ver Estado actual) y verificar en Vercel el commit del deployment.
    *Criterio:* el commit del deployment de producción coincide con `main`. Con rechazo de cookies no hay pedidos a `google.com`, el mapa carga sin avisos de CSP después de aceptar, y el registro con Google termina en el perfil.
 
 3. **Aceptar los acuerdos de tratamiento de datos (DPA) de los proveedores (lo hace el dueño del proyecto).**
